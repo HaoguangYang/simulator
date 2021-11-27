@@ -21,6 +21,7 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
     public Transform BaseLinkTransform;
 
     public float AccellInput { get; set; } = 0f;
+    public float BrakeInput { get; set; } = 0f;
     public float SteerInput { get; set; } = 0f;
 
     public bool HandBrake { get; set; } = false;
@@ -284,6 +285,7 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
         CurrentGear = 1;
         CurrentRPM = 0f;
         AccellInput = 0f;
+        BrakeInput = 0f;
         SteerInput = 0f;
 
         foreach (var axle in Axles)
@@ -472,18 +474,14 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
                 axle.Left.brakeTorque = 0f;
                 axle.Right.brakeTorque = 0f;
             }
-
         }
-        // TODO: to get brake + accelerator working at the same time, modify this area.
-        // You'll need to do some work to separate the brake and accel pedal inputs, though.
-        // TODO: handBrake should apply full braking to rear axle (possibly all axles), without
-        // changing the accelInput
-        else
+
+        if (BrakeInput >= 0)
         {
             //brakes
             foreach (var axle in Axles)
             {
-                var brakeTorque = MaxBrakeTorque * AccellInput * -1 * axle.BrakeBias;
+                var brakeTorque = MaxBrakeTorque * BrakeInput * axle.BrakeBias;
                 axle.Left.brakeTorque = brakeTorque;
                 axle.Right.brakeTorque = brakeTorque;
                 axle.Left.motorTorque = 0f;
@@ -529,11 +527,12 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
         {
             SteerInput = Controller.SteerInput;
             AccellInput = Controller.AccelInput;
+            BrakeInput = Controller.BrakeInput;
         }
 
         if (HandBrake)
         {
-            AccellInput = -1.0f; // TODO better way using Accel and Brake
+            BrakeInput = 1.0f;
         }
     }
 }

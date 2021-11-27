@@ -84,8 +84,8 @@ public class VehicleController : AgentController
 
         // clamp if over
         SteerInput = Mathf.Clamp(SteerInput, -1f, 1f);
-        AccelInput = Mathf.Clamp(AccelInput, -1f, 1f);
-        BrakeInput = Mathf.Clamp01(BrakeInput); // TODO use for all input types just wheel now
+        AccelInput = Mathf.Clamp01(AccelInput);
+        BrakeInput = Mathf.Clamp01(BrakeInput);
     }
 
     private void UpdateInputAPI()
@@ -96,7 +96,8 @@ public class VehicleController : AgentController
         }
 
         SteerInput = StickySteering;
-        AccelInput = StickyAcceleration - StickyBraking;
+        AccelInput = StickyAcceleration;
+        BrakeInput = StickyBraking;
     }
 
     private void UpdateLights()

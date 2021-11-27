@@ -20,6 +20,7 @@ namespace Simulator.FMU
         public Transform BaseLinkTransform;
 
         public float AccellInput { get; set; } = 0f;
+        public float BrakeInput { get; set; } = 0f;
         public float SteerInput { get; set; } = 0f;
 
         public bool HandBrake { get; set; } = false;
@@ -172,7 +173,7 @@ namespace Simulator.FMU
         private void ApplyInput()
         {
             fmu.SetReal(FMUData.modelVariables[1].name, SteerInput); // steerInput
-            fmu.SetReal(FMUData.modelVariables[2].name, AccellInput); // accelInput
+            fmu.SetReal(FMUData.modelVariables[2].name, AccellInput - BrakeInput); // accelInput
         }
 
         private void ApplyUnitySolver()
@@ -216,11 +217,13 @@ namespace Simulator.FMU
             {
                 SteerInput = Controller.SteerInput;
                 AccellInput = Controller.AccelInput;
+                BrakeInput = Controller.BrakeInput;
             }
 
             if (HandBrake)
             {
-                AccellInput = -1.0f; // TODO better way using Accel and Brake
+                AccellInput = 0.0f;
+                BrakeInput = 1.0f;
             }
         }
 

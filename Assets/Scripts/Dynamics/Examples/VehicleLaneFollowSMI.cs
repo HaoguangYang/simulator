@@ -24,6 +24,7 @@ public class VehicleLaneFollowSMI : MonoBehaviour, IVehicleDynamics
     public Transform BaseLink { get { return BaseLinkTransform; } }
     public Transform BaseLinkTransform;
     public float AccellInput { get; set; } = 0f;
+    public float BrakeInput { get; set; } = 0f;
     public float SteerInput { get; set; } = 0f;
     public bool HandBrake { get; set; } = false;
     public float CurrentRPM { get; set; } = 0f;
@@ -318,7 +319,7 @@ public class VehicleLaneFollowSMI : MonoBehaviour, IVehicleDynamics
         Bounds = new Bounds(transform.position, Vector3.zero);
         foreach (Renderer renderer in allRenderers)
         {
-            Bounds.Encapsulate(renderer.bounds); // renderer.bounds is world space 
+            Bounds.Encapsulate(renderer.bounds); // renderer.bounds is world space
         }
 
         RB.centerOfMass = Bounds.center + new Vector3(0, 0, Bounds.extents.z * 0.3f);

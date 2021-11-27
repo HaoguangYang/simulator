@@ -31,6 +31,7 @@ namespace Simulator.Sensors
         public Transform BaseLinkTransform;
 
         public float AccellInput { get; set; } = 0f;
+        public float BrakeInput { get; set; } = 0f;
         public float SteerInput { get; set; } = 0f;
         public bool HandBrake { get; set; } = false;
         public float CurrentRPM { get; set; } = 0f;
@@ -87,7 +88,7 @@ namespace Simulator.Sensors
             Vector3[] aUpVector = {AgentTires[0].transform.up, AgentTires[1].transform.up, AgentTires[2].transform.up, AgentTires[3].transform.up};
             float[] aZValue = {AgentTires[0].transform.position.y, AgentTires[1].transform.position.y, AgentTires[2].transform.position.y, AgentTires[3].transform.position.y};
 
-            CarMakerDynamicsEvent?.Invoke(this, new CarMakerDynamicsSensorEventArgs() { UpVector = aUpVector, ZValue = aZValue, SteerInput = SteerInput, AccellInput = AccellInput });
+            CarMakerDynamicsEvent?.Invoke(this, new CarMakerDynamicsSensorEventArgs() { UpVector = aUpVector, ZValue = aZValue, SteerInput = SteerInput, AccellInput = AccellInput - BrakeInput });
         }
 
         public void SetVehiclePose(Vector3 aPos, float aHeading, float aRoll, float aPitch, float aSpeed)
@@ -201,11 +202,13 @@ namespace Simulator.Sensors
             {
                 SteerInput = Controller.SteerInput;
                 AccellInput = Controller.AccelInput;
+                BrakeInput = Controller.BrakeInput;
             }
 
             if (HandBrake)
             {
-                AccellInput = -1.0f; // TODO better way using Accel and Brake
+                AccellInput = 0.0f;
+                BrakeInput = 1.0f;
             }
         }
 
