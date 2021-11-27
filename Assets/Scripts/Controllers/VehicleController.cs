@@ -32,7 +32,8 @@ public class VehicleController : AgentController
     // api do not remove
     private bool Sticky = false;
     private float StickySteering;
-    private float StickAcceleraton;
+    private float StickyAcceleration;
+    private float StickyBraking;
 
     public void Update()
     {
@@ -95,7 +96,7 @@ public class VehicleController : AgentController
         }
 
         SteerInput = StickySteering;
-        AccelInput = StickAcceleraton;
+        AccelInput = StickyAcceleration - StickyBraking;
     }
 
     private void UpdateLights()
@@ -178,11 +179,12 @@ public class VehicleController : AgentController
     }
 
     // api
-    public override void ApplyControl(bool sticky, float steering, float acceleration)
+    public override void ApplyControl(bool sticky, float steering, float acceleration, float braking)
     {
         this.Sticky = sticky;
         StickySteering = steering;
-        StickAcceleraton = acceleration;
+        StickyAcceleration = acceleration;
+        StickyBraking = braking;
     }
 
     public void ResetStickyControl()

@@ -15,9 +15,9 @@ public abstract class AgentController : MonoBehaviour, IAgentController
 {
     [SerializeField]
     private Transform driverViewTransform;
-    
+
     private ISensorsController sensorsController;
-    
+
     public bool Active { get; set; }
     public bool Enabled
     {
@@ -57,7 +57,7 @@ public abstract class AgentController : MonoBehaviour, IAgentController
                 sensorsController.SensorsChanged += SensorsControllerOnSensorsChanged;
         }
     }
-    
+
     public abstract Vector3 Velocity { get; }
     public abstract Vector3 Acceleration { get; }
     public event Action<IAgentController> SensorsChanged;
@@ -71,7 +71,7 @@ public abstract class AgentController : MonoBehaviour, IAgentController
     public abstract void ResetSavedPosition(Vector3 pos, Quaternion rot);
     public abstract void Init();
 
-    public abstract void ApplyControl(bool sticky, float steering, float acceleration);
+    public abstract void ApplyControl(bool sticky, float steering, float acceleration, float braking);
 
     public virtual void DisableControl()
     {
@@ -82,14 +82,14 @@ public abstract class AgentController : MonoBehaviour, IAgentController
             rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
             rb.isKinematic = true;
         }
-        
+
         //Disable articulation bodies physics simulations
         var articulationBodies = gameObject.GetComponentsInChildren<ArticulationBody>();
         foreach (var articulationBody in articulationBodies)
         {
             articulationBody.enabled = false;
         }
-        
+
         //Disable controller and dynamics so they will not perform physics updates
         Enabled = false;
         var vehicleDynamics = gameObject.GetComponent<IVehicleDynamics>() as MonoBehaviour;
