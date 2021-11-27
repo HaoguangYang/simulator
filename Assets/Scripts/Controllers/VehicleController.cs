@@ -80,6 +80,11 @@ public class VehicleController : AgentController
             SteerInput += input.SteerInput;
             AccelInput += input.AccelInput;
             BrakeInput += input.BrakeInput;
+
+            if (input.TargetGear != null)
+            {
+                TargetGear = (int)input.TargetGear;
+            }
         }
 
         // clamp if over

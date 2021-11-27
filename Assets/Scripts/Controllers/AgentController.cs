@@ -42,6 +42,7 @@ public abstract class AgentController : MonoBehaviour, IAgentController
     public virtual float AccelInput { get; set; }
     public virtual float SteerInput { get; set; }
     public virtual float BrakeInput { get; set; }
+    public virtual int TargetGear { get; set; }
 
     public ISensorsController AgentSensorsController
     {
