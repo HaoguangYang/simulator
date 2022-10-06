@@ -13,6 +13,7 @@
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.Formats.Fbx.Editor",
         "Unity.RenderPipelines.HighDefinition.Runtime",
+        "Unity.Burst",
         "Unity.EditorCoroutines.Editor"
     ],
     "includePlatforms": [
