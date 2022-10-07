@@ -7,13 +7,13 @@
 
 namespace Simulator.Editor.PointCloud.Trees
 {
-    using Unity.Burst;
     using System;
     using System.IO.MemoryMappedFiles;
     using System.Linq;
     using System.Collections.Generic;
     using Simulator.PointCloud;
     using Simulator.PointCloud.Trees;
+    using Unity.Burst;
     using Unity.Collections.LowLevel.Unsafe;
     using Unity.Collections;
     using Unity.Jobs.LowLevel.Unsafe;
@@ -131,7 +131,7 @@ namespace Simulator.Editor.PointCloud.Trees
                 ++Counts[ThreadIndex];
             }
         }
-        
+
         [BurstCompile(CompileSynchronously = true)]
         unsafe struct PointCloudCreateHistogramJob : IJobParallelFor
         {
@@ -152,7 +152,7 @@ namespace Simulator.Editor.PointCloud.Trees
                 ++Counts[ThreadIndex];
             }
         }
-        
+
         [BurstCompile(CompileSynchronously = true)]
         unsafe struct PointCloudCreateHistogramLasJob : IJobParallelFor
         {

@@ -8,12 +8,14 @@
 namespace Simulator.ScenarioEditor.Playback
 {
     using System.Collections;
+    using System.Collections.Generic;
+    using UnityEngine;
     using UI.Playback;
 
     /// <summary>
     /// Playback controller that handles predefined scenario elements
     /// </summary>
-    public abstract class PlaybackController
+    public abstract class PlaybackController : MonoBehaviour
     {
         /// <summary>
         /// Duration of this controller playback

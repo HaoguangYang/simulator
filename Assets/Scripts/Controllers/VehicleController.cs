@@ -193,6 +193,20 @@ public class VehicleController : AgentController
         StickyBraking = braking;
     }
 
+    public override void ApplyControl(bool sticky, float steering, float acceleration)
+    {
+        this.Sticky = sticky;
+        StickySteering = steering;
+        if (acceleration > 0f)
+        {
+            StickyAcceleration = acceleration;
+            StickyBraking = 0f;
+        } else {
+            StickyAcceleration = 0f;
+            StickyBraking = -acceleration;
+        }
+    }
+
     public void ResetStickyControl()
     {
         Sticky = false;

@@ -73,6 +73,7 @@ public abstract class AgentController : MonoBehaviour, IAgentController
     public abstract void Init();
 
     public abstract void ApplyControl(bool sticky, float steering, float acceleration, float braking);
+    public abstract void ApplyControl(bool sticky, float steering, float acceleration);
 
     public virtual void DisableControl()
     {

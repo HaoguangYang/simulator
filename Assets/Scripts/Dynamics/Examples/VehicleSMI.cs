@@ -475,7 +475,11 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
                 axle.Right.brakeTorque = 0f;
             }
         }
-
+        // TODO: to get brake + accelerator working at the same time, modify this area.
+        // You'll need to do some work to separate the brake and accel pedal inputs, though.
+        // TODO: handBrake should apply full braking to rear axle (possibly all axles), without
+        // changing the accelInput
+        //else
         if (BrakeInput >= 0)
         {
             //brakes

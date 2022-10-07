@@ -35,5 +35,6 @@ public interface IAgentController : ITriggerAgent
     void Init();
 
     void ApplyControl(bool sticky, float steering, float acceleration, float braking);
+    void ApplyControl(bool sticky, float steering, float acceleration);
     void DisableControl();
 }
