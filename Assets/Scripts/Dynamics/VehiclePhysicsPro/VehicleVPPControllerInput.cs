@@ -12,10 +12,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using VehiclePhysics;
 
-public class VehicleVPPControllerInput : VehicleBehaviour
+public class VehicleVPPControllerInput : MonoBehaviour
 {
     public VehicleBase Vehicle;
 
+    /*
     public override void OnEnableVehicle()
     {
         // This component requires a MyVpp explicitly
@@ -27,6 +28,7 @@ public class VehicleVPPControllerInput : VehicleBehaviour
             enabled = false;
         }
     }
+    */
 
     public void SetSteer(float steerNormalized)
     {
