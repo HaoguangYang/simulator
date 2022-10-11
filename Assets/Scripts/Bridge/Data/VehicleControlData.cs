@@ -16,6 +16,8 @@ namespace Simulator.Bridge.Data
         Reverse,
         Parking,
         Low,
+        Invalid,
+        None,
     };
 
     public class VehicleControlData
@@ -32,7 +34,7 @@ namespace Simulator.Bridge.Data
         public bool ShiftGearUp;
         public bool ShiftGearDown;
 
-        // apollo 
+        // apollo
         public float? SteerRate;
         public float? SteerTarget;
         public double? TimeStampSec;

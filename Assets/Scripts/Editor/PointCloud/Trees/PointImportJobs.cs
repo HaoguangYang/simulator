@@ -13,6 +13,7 @@ namespace Simulator.Editor.PointCloud.Trees
     using System.Collections.Generic;
     using Simulator.PointCloud;
     using Simulator.PointCloud.Trees;
+    using Unity.Burst;
     using Unity.Collections.LowLevel.Unsafe;
     using Unity.Collections;
     using Unity.Jobs.LowLevel.Unsafe;
@@ -108,6 +109,7 @@ namespace Simulator.Editor.PointCloud.Trees
             }
         }
 
+        [BurstCompile(CompileSynchronously = true)]
         unsafe struct PointCloudGetBoundsJob : IJobParallelFor
         {
             public InputAccess X;
@@ -129,7 +131,8 @@ namespace Simulator.Editor.PointCloud.Trees
                 ++Counts[ThreadIndex];
             }
         }
-        
+
+        [BurstCompile(CompileSynchronously = true)]
         unsafe struct PointCloudCreateHistogramJob : IJobParallelFor
         {
             public InputAccess Z;
@@ -149,7 +152,8 @@ namespace Simulator.Editor.PointCloud.Trees
                 ++Counts[ThreadIndex];
             }
         }
-        
+
+        [BurstCompile(CompileSynchronously = true)]
         unsafe struct PointCloudCreateHistogramLasJob : IJobParallelFor
         {
             [NativeDisableUnsafePtrRestriction]
@@ -185,6 +189,7 @@ namespace Simulator.Editor.PointCloud.Trees
             }
         }
 
+        [BurstCompile(CompileSynchronously = true)]
         unsafe struct PointCloudConvertJob : IJobParallelFor
         {
             public InputAccess X;
@@ -228,6 +233,7 @@ namespace Simulator.Editor.PointCloud.Trees
             }
         }
 
+        [BurstCompile(CompileSynchronously = true)]
         unsafe struct LasConvertJob : IJobParallelFor
         {
             public bool LasRGB8BitWorkaround;

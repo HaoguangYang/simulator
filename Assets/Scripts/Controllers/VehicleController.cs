@@ -32,7 +32,8 @@ public class VehicleController : AgentController
     // api do not remove
     private bool Sticky = false;
     private float StickySteering;
-    private float StickAcceleraton;
+    private float StickyAcceleration;
+    private float StickyBraking;
 
     public void Update()
     {
@@ -79,12 +80,17 @@ public class VehicleController : AgentController
             SteerInput += input.SteerInput;
             AccelInput += input.AccelInput;
             BrakeInput += input.BrakeInput;
+
+            if (input.TargetGear != null)
+            {
+                TargetGear = (int)input.TargetGear;
+            }
         }
 
         // clamp if over
         SteerInput = Mathf.Clamp(SteerInput, -1f, 1f);
-        AccelInput = Mathf.Clamp(AccelInput, -1f, 1f);
-        BrakeInput = Mathf.Clamp01(BrakeInput); // TODO use for all input types just wheel now
+        AccelInput = Mathf.Clamp01(AccelInput);
+        BrakeInput = Mathf.Clamp01(BrakeInput);
     }
 
     private void UpdateInputAPI()
@@ -95,7 +101,8 @@ public class VehicleController : AgentController
         }
 
         SteerInput = StickySteering;
-        AccelInput = StickAcceleraton;
+        AccelInput = StickyAcceleration;
+        BrakeInput = StickyBraking;
     }
 
     private void UpdateLights()
@@ -178,11 +185,26 @@ public class VehicleController : AgentController
     }
 
     // api
+    public override void ApplyControl(bool sticky, float steering, float acceleration, float braking)
+    {
+        this.Sticky = sticky;
+        StickySteering = steering;
+        StickyAcceleration = acceleration;
+        StickyBraking = braking;
+    }
+
     public override void ApplyControl(bool sticky, float steering, float acceleration)
     {
         this.Sticky = sticky;
         StickySteering = steering;
-        StickAcceleraton = acceleration;
+        if (acceleration > 0f)
+        {
+            StickyAcceleration = acceleration;
+            StickyBraking = 0f;
+        } else {
+            StickyAcceleration = 0f;
+            StickyBraking = -acceleration;
+        }
     }
 
     public void ResetStickyControl()

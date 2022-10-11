@@ -27,12 +27,14 @@ public interface IAgentController : ITriggerAgent
     float AccelInput { get; set; }
     float SteerInput { get; set; }
     float BrakeInput { get; set; }
+    int TargetGear { get; set; }
     event Action<IAgentController> SensorsChanged;
 
     void ResetPosition();
     void ResetSavedPosition(Vector3 pos, Quaternion rot);
     void Init();
 
+    void ApplyControl(bool sticky, float steering, float acceleration, float braking);
     void ApplyControl(bool sticky, float steering, float acceleration);
     void DisableControl();
 }
