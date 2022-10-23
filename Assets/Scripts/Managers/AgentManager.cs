@@ -96,13 +96,18 @@ public class AgentManager : MonoBehaviour
             var vfs = VfsEntry.makeRoot(dir);
             Simulator.Web.Config.CheckDir(vfs.GetChild(config.BridgeData.AssetGuid), Simulator.Web.Config.LoadBridgePlugin);
 
-            bridgeClient = go.AddComponent<BridgeClient>();
             config.Bridge = BridgePlugins.Get(config.BridgeData.Name);
-            bridgeClient.Init(config.Bridge);
+            //Debug.LogWarning($"Getting bridge plugin with name {config.BridgeData.Name} yields {config.Bridge}");
 
-            if (!String.IsNullOrEmpty(config.Connection))
+            if (config.Bridge != null)
             {
-                bridgeClient.Connect(config.Connection);
+                bridgeClient = go.AddComponent<BridgeClient>();
+                bridgeClient.Init(config.Bridge);
+
+                if (!String.IsNullOrEmpty(config.Connection))
+                {
+                    bridgeClient.Connect(config.Connection);
+                }
             }
         }
 

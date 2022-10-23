@@ -43,11 +43,11 @@ namespace UnityEngine.Rendering.HighDefinition
         /// <returns>A new HDRenderPipeline instance.</returns>
         protected override RenderPipeline CreatePipeline()
         {
-            m_RenderingActiveCameraFrameSettings = m_RenderingPathDefaultCameraFrameSettings;            
+            m_RenderingActiveCameraFrameSettings = m_RenderingPathDefaultCameraFrameSettings;
             return new HDRenderPipeline(this, HDRenderPipeline.defaultAsset);
         }
         // ===
-        
+
         /// <summary>
         /// OnValidate implementation.
         /// </summary>
@@ -158,6 +158,7 @@ namespace UnityEngine.Rendering.HighDefinition
             switch(type)
             {
                 case FrameSettingsRenderType.Camera:
+                    //return ref m_RenderingPathDefaultCameraFrameSettings;
                     // === LGSVL (Return active frame settings instead of default ones for camera)
                     return ref m_RenderingActiveCameraFrameSettings;
                     // ===
