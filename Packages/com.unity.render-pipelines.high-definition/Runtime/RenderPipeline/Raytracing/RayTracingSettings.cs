@@ -6,7 +6,8 @@ namespace UnityEngine.Rendering.HighDefinition
     /// <summary>
     /// A volume component that holds the general settings for ray traced effects.
     /// </summary>
-    [Serializable, VolumeComponentMenu("Ray Tracing/Ray Tracing Settings (Preview)")]
+    [HDRPHelpURLAttribute("Ray-Tracing-Settings")]
+    [Serializable, VolumeComponentMenuForRenderPipeline("Ray Tracing/Ray Tracing Settings (Preview)", typeof(HDRenderPipeline))]
     public sealed class RayTracingSettings : VolumeComponent
     {
         /// <summary>
@@ -16,9 +17,9 @@ namespace UnityEngine.Rendering.HighDefinition
         public ClampedFloatParameter rayBias = new ClampedFloatParameter(0.001f, 0.0f, 0.1f);
 
         /// <summary>
-        /// Enables the override of the shadow culling. This increases the validity area of shadow maps outside of the frustum.
+        /// When enabled, the culling region for punctual and area lights shadow maps is increased from frustum culling to extended culling. For Directional lights, cascades are not extended, but additional objects may appear in the cascades.
         /// </summary>
-        [Tooltip("Enables the override of the shadow culling. This increases the validity area of shadow maps outside of the frustum.")]
+        [Tooltip("When enabled, the culling region for punctual and area lights shadow maps is increased from frustum culling to extended culling. For Directional lights, cascades are not extended, but additional objects may appear in the cascades.")]
         [FormerlySerializedAs("extendCulling")]
         public BoolParameter extendShadowCulling = new BoolParameter(false);
 
@@ -49,4 +50,3 @@ namespace UnityEngine.Rendering.HighDefinition
         }
     }
 }
-

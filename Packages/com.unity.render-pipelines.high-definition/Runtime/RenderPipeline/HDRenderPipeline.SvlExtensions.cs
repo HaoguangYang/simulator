@@ -52,7 +52,7 @@ namespace UnityEngine.Rendering.HighDefinition
             }
         }
 
-        public ref FrameSettings GetDefaultCameraFrameSettings() { return ref m_Asset.m_RenderingActiveCameraFrameSettings; }
+        public ref FrameSettings GetDefaultCameraFrameSettings() { return ref m_Asset.GetDefaultCameraFrameSettings(); }
 
         /// <summary>
         /// <para>
@@ -79,7 +79,7 @@ namespace UnityEngine.Rendering.HighDefinition
         /// <summary>
         /// MSAA samples currently used by this render pipeline.
         /// </summary>
-        public MSAASamples MSAASamples => m_MSAASamples;
+        //public MSAASamples MSAASamples => m_MSAASamples;
 
         /// <summary>
         /// Marks current copy of depth buffer as invalid. Should be called after original depth buffer is modified.
@@ -98,10 +98,10 @@ namespace UnityEngine.Rendering.HighDefinition
         /// <param name="depthBuffer">Target depth buffer.</param>
         public void ForceRenderSky(HDCamera camera, CommandBuffer cmd, RTHandle colorBuffer, RTHandle depthBuffer)
         {
-            if (m_EnableRenderGraph)
-                m_SkyManager.RenderSky(camera, GetCurrentSunLight(), colorBuffer, depthBuffer, m_CurrentDebugDisplaySettings, cmd);
-            else
-                RenderSky(camera, cmd);
+            //if (m_EnableRenderGraph)
+                m_SkyManager.RenderSky(camera, GetMainLight(), colorBuffer, depthBuffer, m_CurrentDebugDisplaySettings, cmd);
+            //else
+            //    RenderSky(camera, cmd);
         }
 
         /// <summary>

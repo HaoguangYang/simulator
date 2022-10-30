@@ -11,9 +11,9 @@
 void MeshDecalsPositionZBias(inout VaryingsToPS input)
 {
 #if UNITY_REVERSED_Z
-	input.vmesh.positionCS.z -= _DecalMeshDepthBias;
+    input.vmesh.positionCS.z -= _DecalMeshDepthBias;
 #else
-	input.vmesh.positionCS.z += _DecalMeshDepthBias;
+    input.vmesh.positionCS.z += _DecalMeshDepthBias;
 #endif
 }
 
@@ -60,7 +60,7 @@ void Frag(  PackedVaryingsToPS packedInput,
     float clipValue = 1.0;
     float angleFadeFactor = 1.0;
 
-#if (SHADERPASS == SHADERPASS_DBUFFER_PROJECTOR) || (SHADERPASS == SHADERPASS_FORWARD_EMISSIVE_PROJECTOR)    
+#if (SHADERPASS == SHADERPASS_DBUFFER_PROJECTOR) || (SHADERPASS == SHADERPASS_FORWARD_EMISSIVE_PROJECTOR)
 
     float depth = LoadCameraDepth(input.positionSS.xy);
 #if (SHADERPASS == SHADERPASS_FORWARD_EMISSIVE_PROJECTOR) && UNITY_REVERSED_Z
@@ -125,12 +125,10 @@ void Frag(  PackedVaryingsToPS packedInput,
         float4x4 normalToWorld = UNITY_ACCESS_INSTANCED_PROP(Decal, _NormalToWorld);
         float2 angleFade = float2(normalToWorld[1][3], normalToWorld[2][3]);
 
-        if (angleFade.y < 0.0f) // if angle fade is enabled
+        if (angleFade.x > 0.0f) // if angle fade is enabled
         {
             float3 decalNormal = float3(normalToWorld[0].z, normalToWorld[1].z, normalToWorld[2].z);
-            float dotAngle = dot(material.geomNormalWS, decalNormal);
-            // See equation in DecalSystem.cs - simplified to a madd mul add here
-            angleFadeFactor = saturate(angleFade.x + angleFade.y * (dotAngle * (dotAngle - 2.0)));
+            angleFadeFactor = DecodeAngleFade(dot(material.geomNormalWS, decalNormal), angleFade);
         }
     }
 

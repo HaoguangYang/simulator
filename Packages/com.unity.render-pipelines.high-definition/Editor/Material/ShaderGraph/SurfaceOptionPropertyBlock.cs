@@ -9,6 +9,7 @@ using UnityEngine;
 
 // We share the name of the properties in the UI to avoid duplication
 using static UnityEditor.Rendering.HighDefinition.SurfaceOptionUIBlock.Styles;
+using static UnityEditor.Rendering.HighDefinition.TessellationOptionsUIBlock.Styles;
 
 namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
 {
@@ -17,12 +18,12 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
         [Flags]
         public enum Features
         {
-            None                    = 0,
-            ShowDoubleSidedNormal   = 1 << 0,
-            All                     = ~0,
+            None = 0,
+            ShowDoubleSidedNormal = 1 << 0,
+            All = ~0,
 
-            Unlit                   = Lit ^ ShowDoubleSidedNormal, // hide double sided normal for unlit
-            Lit                     = All,
+            Unlit = Lit ^ ShowDoubleSidedNormal, // hide double sided normal for unlit
+            Lit = All,
         }
 
         class Styles
@@ -33,14 +34,15 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
 
         Features enabledFeatures;
 
-        protected override string title => "Surface Option";
+        protected override string title => "Surface Options";
         protected override int foldoutIndex => 0;
 
         public SurfaceOptionPropertyBlock(Features features) => enabledFeatures = features;
 
         protected override void CreatePropertyGUI()
         {
-            AddProperty(surfaceTypeText, () => systemData.surfaceType, (newValue) => {
+            AddProperty(surfaceTypeText, () => systemData.surfaceType, (newValue) =>
+            {
                 systemData.surfaceType = newValue;
                 systemData.TryChangeRenderingPass(systemData.renderQueueType);
             });
@@ -58,7 +60,7 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
             context.AddProperty(renderingPassText, new PopupField<HDRenderQueue.RenderQueueType>(renderingPassList, renderQueueType, HDSubShaderUtilities.RenderQueueName, HDSubShaderUtilities.RenderQueueName) { value = renderingPassValue }, (evt) =>
             {
                 registerUndo(renderingPassText);
-                if(systemData.TryChangeRenderingPass(evt.newValue))
+                if (systemData.TryChangeRenderingPass(evt.newValue))
                     onChange();
             });
 
@@ -67,13 +69,17 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 AddProperty(blendModeText, () => systemData.blendMode, (newValue) => systemData.blendMode = newValue);
                 AddProperty(enableTransparentFogText, () => builtinData.transparencyFog, (newValue) => builtinData.transparencyFog = newValue);
                 AddProperty(transparentZTestText, () => systemData.zTest, (newValue) => systemData.zTest = newValue);
-                AddProperty(zWriteEnableText, () => systemData.transparentZWrite, (newValue) => systemData.transparentZWrite = newValue);
+                if (renderingPassValue != HDRenderQueue.RenderQueueType.LowTransparent)
+                    AddProperty(zWriteEnableText, () => systemData.transparentZWrite, (newValue) => systemData.transparentZWrite = newValue);
                 AddProperty(transparentCullModeText, () => systemData.transparentCullMode, (newValue) => systemData.transparentCullMode = newValue);
                 AddProperty(transparentSortPriorityText, () => systemData.sortPriority, (newValue) => systemData.sortPriority = HDRenderQueue.ClampsTransparentRangePriority(newValue));
                 AddProperty(transparentBackfaceEnableText, () => builtinData.backThenFrontRendering, (newValue) => builtinData.backThenFrontRendering = newValue);
-                AddProperty(transparentDepthPrepassEnableText, () => builtinData.transparentDepthPrepass, (newValue) => builtinData.transparentDepthPrepass = newValue);
-                AddProperty(transparentDepthPostpassEnableText, () => builtinData.transparentDepthPostpass, (newValue) => builtinData.transparentDepthPostpass = newValue);
-                AddProperty(transparentWritingMotionVecText, () => builtinData.transparentWritesMotionVec, (newValue) => builtinData.transparentWritesMotionVec = newValue);
+                if (renderingPassValue != HDRenderQueue.RenderQueueType.LowTransparent)
+                {
+                    AddProperty(transparentDepthPrepassEnableText, () => builtinData.transparentDepthPrepass, (newValue) => builtinData.transparentDepthPrepass = newValue);
+                    AddProperty(transparentDepthPostpassEnableText, () => builtinData.transparentDepthPostpass, (newValue) => builtinData.transparentDepthPostpass = newValue);
+                    AddProperty(transparentWritingMotionVecText, () => builtinData.transparentWritesMotionVec, (newValue) => builtinData.transparentWritesMotionVec = newValue);
+                }
 
                 if (lightingData != null)
                     AddProperty(enableBlendModePreserveSpecularLightingText, () => lightingData.blendPreserveSpecular, (newValue) => lightingData.blendPreserveSpecular = newValue);
@@ -108,14 +114,45 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
             {
                 AddProperty(supportDecalsText, () => lightingData.receiveDecals, (newValue) => lightingData.receiveDecals = newValue);
 
-                if (systemData.surfaceType == SurfaceType.Transparent)
+                if (systemData.surfaceType == SurfaceType.Transparent && renderingPassValue != HDRenderQueue.RenderQueueType.LowTransparent)
                     AddProperty(receivesSSRTransparentText, () => lightingData.receiveSSRTransparent, (newValue) => lightingData.receiveSSRTransparent = newValue);
                 else
                     AddProperty(receivesSSRText, () => lightingData.receiveSSR, (newValue) => lightingData.receiveSSR = newValue);
-                
+
                 AddProperty(enableGeometricSpecularAAText, () => lightingData.specularAA, (newValue) => lightingData.specularAA = newValue);
             }
             AddProperty(depthOffsetEnableText, () => builtinData.depthOffset, (newValue) => builtinData.depthOffset = newValue);
+            if (builtinData.depthOffset)
+            {
+                context.globalIndentLevel++;
+                AddProperty(conservativeDepthOffsetEnableText, () => builtinData.conservativeDepthOffset, (newValue) => builtinData.conservativeDepthOffset = newValue);
+                context.globalIndentLevel--;
+            }
+
+            AddProperty(customVelocityText, () => systemData.customVelocity, (newValue) => systemData.customVelocity = newValue);
+
+            AddProperty(tessellationEnableText, () => systemData.tessellation, (newValue) => systemData.tessellation = newValue);
+            if (systemData.tessellation)
+            {
+                context.globalIndentLevel++;
+                AddProperty(tessellationMaxDisplacementText, () => systemData.tessellationMaxDisplacement, (newValue) => systemData.tessellationMaxDisplacement = Mathf.Abs(newValue));
+                if (systemData.doubleSidedMode == DoubleSidedMode.Disabled)
+                    AddProperty(tessellationBackFaceCullEpsilonText, () => systemData.tessellationBackFaceCullEpsilon, (newValue) => systemData.tessellationBackFaceCullEpsilon = Mathf.Clamp(newValue, -1.0f, 0.0f));
+
+                AddProperty(tessellationFactorMinDistanceText, () => systemData.tessellationFactorMinDistance, (newValue) => systemData.tessellationFactorMinDistance = newValue);
+                AddProperty(tessellationFactorMaxDistanceText, () => systemData.tessellationFactorMaxDistance, (newValue) => systemData.tessellationFactorMaxDistance = newValue);
+                AddProperty(tessellationFactorTriangleSizeText, () => systemData.tessellationFactorTriangleSize, (newValue) => systemData.tessellationFactorTriangleSize = newValue);
+
+                AddProperty(tessellationModeText, () => systemData.tessellationMode, (newValue) => systemData.tessellationMode = newValue);
+                if (systemData.tessellationMode == TessellationMode.Phong)
+                {
+                    context.globalIndentLevel++;
+                    AddProperty(tessellationShapeFactorText, () => systemData.tessellationShapeFactor, (newValue) => systemData.tessellationShapeFactor = Mathf.Clamp01(newValue));
+                    context.globalIndentLevel--;
+                }
+
+                context.globalIndentLevel--;
+            }
         }
     }
 }

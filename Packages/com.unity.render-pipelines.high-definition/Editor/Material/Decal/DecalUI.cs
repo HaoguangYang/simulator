@@ -23,25 +23,14 @@ namespace UnityEditor.Rendering.HighDefinition
 
         MaterialUIBlockList uiBlocks = new MaterialUIBlockList
         {
-            new DecalSurfaceOptionsUIBlock((MaterialUIBlock.Expandable)Expandable.SurfaceOptions),
-            new DecalSurfaceInputsUIBlock((MaterialUIBlock.Expandable)Expandable.SurfaceInputs),
-            new DecalSortingInputsUIBlock((MaterialUIBlock.Expandable)Expandable.Sorting),
+            new DecalSurfaceOptionsUIBlock((MaterialUIBlock.ExpandableBit)Expandable.SurfaceOptions),
+            new DecalSurfaceInputsUIBlock((MaterialUIBlock.ExpandableBit)Expandable.SurfaceInputs),
+            new DecalSortingInputsUIBlock((MaterialUIBlock.ExpandableBit)Expandable.Sorting),
         };
 
         protected override void OnMaterialGUI(MaterialEditor materialEditor, MaterialProperty[] props)
         {
-            // always instanced
-            SerializedProperty instancing = materialEditor.serializedObject.FindProperty("m_EnableInstancingVariants");
-            instancing.boolValue = true;
-
-            using (var changed = new EditorGUI.ChangeCheckScope())
-            {
-                uiBlocks.OnGUI(materialEditor, props);
-                ApplyKeywordsAndPassesIfNeeded(changed.changed, uiBlocks.materials);
-            }
-
-            // We should always do this call at the end
-            materialEditor.serializedObject.ApplyModifiedProperties();
+            uiBlocks.OnGUI(materialEditor, props);
         }
 
         // All Setup Keyword functions must be static. It allow to create script to automatically update the shaders with a script if code change
@@ -81,20 +70,26 @@ namespace UnityEditor.Rendering.HighDefinition
             material.SetInt(HDShaderIDs._DecalColorMask3, (int)mask3);
 
             // First reset the pass (in case new shader graph add or remove a pass)
-            material.SetShaderPassEnabled(HDShaderPassNames.s_DBufferProjectorStr, true);
-            material.SetShaderPassEnabled(HDShaderPassNames.s_DecalProjectorForwardEmissiveStr, true);
-            material.SetShaderPassEnabled(HDShaderPassNames.s_DBufferMeshStr, true);
-            material.SetShaderPassEnabled(HDShaderPassNames.s_DecalMeshForwardEmissiveStr, true);
+            bool enableDBufferMeshPass = true;
+            bool enableDBufferProjectorPass = true;
+            bool enableDecalMeshForwardEmissivePass = true;
+            bool enableDecalProjectorForwardEmissivePass = true;
 
             // Then disable pass is they aren't needed
-            if (material.FindPass(HDShaderPassNames.s_DBufferProjectorStr) != -1)
-                material.SetShaderPassEnabled(HDShaderPassNames.s_DBufferProjectorStr, ((int)mask0 + (int)mask1 + (int)mask2 + (int)mask3) != 0);
-            if (material.FindPass(HDShaderPassNames.s_DecalProjectorForwardEmissiveStr) != -1)
-                material.SetShaderPassEnabled(HDShaderPassNames.s_DecalProjectorForwardEmissiveStr, material.HasProperty(kAffectEmission) && material.GetFloat(kAffectEmission) == 1.0f);
             if (material.FindPass(HDShaderPassNames.s_DBufferMeshStr) != -1)
-                material.SetShaderPassEnabled(HDShaderPassNames.s_DBufferMeshStr, ((int)mask0 + (int)mask1 + (int)mask2 + (int)mask3) != 0);
+                enableDBufferMeshPass = ((int)mask0 + (int)mask1 + (int)mask2 + (int)mask3) != 0;
+            if (material.FindPass(HDShaderPassNames.s_DBufferProjectorStr) != -1)
+                enableDBufferProjectorPass = ((int)mask0 + (int)mask1 + (int)mask2 + (int)mask3) != 0;
             if (material.FindPass(HDShaderPassNames.s_DecalMeshForwardEmissiveStr) != -1)
-                material.SetShaderPassEnabled(HDShaderPassNames.s_DecalMeshForwardEmissiveStr, material.HasProperty(kAffectEmission) && material.GetFloat(kAffectEmission) == 1.0f);
+                enableDecalMeshForwardEmissivePass = material.HasProperty(kAffectEmission) && material.GetFloat(kAffectEmission) == 1.0f;
+            if (material.FindPass(HDShaderPassNames.s_DecalProjectorForwardEmissiveStr) != -1)
+                enableDecalProjectorForwardEmissivePass = material.HasProperty(kAffectEmission) && material.GetFloat(kAffectEmission) == 1.0f;
+
+            // Apply once
+            material.SetShaderPassEnabled(HDShaderPassNames.s_DBufferMeshStr, enableDBufferMeshPass);
+            material.SetShaderPassEnabled(HDShaderPassNames.s_DBufferProjectorStr, enableDBufferProjectorPass);
+            material.SetShaderPassEnabled(HDShaderPassNames.s_DecalMeshForwardEmissiveStr, enableDecalMeshForwardEmissivePass);
+            material.SetShaderPassEnabled(HDShaderPassNames.s_DecalProjectorForwardEmissiveStr, enableDecalProjectorForwardEmissivePass);
 
             // Set stencil state
             material.SetInt(kDecalStencilWriteMask, (int)StencilUsage.Decals);
@@ -116,7 +111,7 @@ namespace UnityEditor.Rendering.HighDefinition
         protected const string kEmissiveColorMap = "_EmissiveColorMap";
 
         // All Setup Keyword functions must be static. It allow to create script to automatically update the shaders with a script if code change
-        static public void SetupMaterialKeywordsAndPass(Material material)
+        static public void SetupDecalKeywordsAndPass(Material material)
         {
             // Setup color mask properties
             SetupCommonDecalMaterialKeywordsAndPass(material);
@@ -127,6 +122,6 @@ namespace UnityEditor.Rendering.HighDefinition
             CoreUtils.SetKeyword(material, "_EMISSIVEMAP", material.GetTexture(kEmissiveColorMap));
         }
 
-        protected override void SetupMaterialKeywordsAndPassInternal(Material material) => SetupMaterialKeywordsAndPass(material);
+        public override void ValidateMaterial(Material material) => SetupDecalKeywordsAndPass(material);
     }
 }

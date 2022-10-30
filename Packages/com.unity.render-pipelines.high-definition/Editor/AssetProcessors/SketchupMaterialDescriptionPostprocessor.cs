@@ -8,8 +8,8 @@ namespace UnityEditor.Rendering.HighDefinition
 {
     class SketchupMaterialDescriptionPreprocessor : AssetPostprocessor
     {
-        static readonly uint k_Version = 1;
-        static readonly int k_Order = 2;
+        static readonly uint k_Version = 2;
+        static readonly int k_Order = -980;
 
         public override uint GetVersion()
         {
@@ -23,8 +23,7 @@ namespace UnityEditor.Rendering.HighDefinition
 
         public void OnPreprocessMaterialDescription(MaterialDescription description, Material material, AnimationClip[] clips)
         {
-            var pipelineAsset = GraphicsSettings.currentRenderPipeline;
-            if (!pipelineAsset || pipelineAsset.GetType() != typeof(HDRenderPipelineAsset))
+            if (HDRenderPipeline.currentAsset == null)
                 return;
 
             var lowerCasePath = Path.GetExtension(assetPath).ToLower();
@@ -41,23 +40,23 @@ namespace UnityEditor.Rendering.HighDefinition
             TexturePropertyDescription textureProperty;
 
             material.SetShaderPassEnabled("DistortionVectors", false);
-            material.SetShaderPassEnabled("TransparentDepthPrepass",false);
+            material.SetShaderPassEnabled("TransparentDepthPrepass", false);
             material.SetShaderPassEnabled("TransparentDepthPostpass", false);
             material.SetShaderPassEnabled("TransparentBackface", false);
             material.SetShaderPassEnabled("MOTIONVECTORS", false);
 
-			if (description.TryGetProperty("DiffuseMap", out textureProperty) && textureProperty.texture!=null)
+            if (description.TryGetProperty("DiffuseMap", out textureProperty) && textureProperty.texture != null)
             {
                 SetMaterialTextureProperty("_BaseColorMap", material, textureProperty);
                 SetMaterialTextureProperty("_MainTex", material, textureProperty);
-				var color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                var color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
                 material.SetColor("_BaseColor", color);
                 material.SetColor("_Color", color);
             }
-			else if (description.TryGetProperty("DiffuseColor", out vectorProperty))
+            else if (description.TryGetProperty("DiffuseColor", out vectorProperty))
             {
-				Color diffuseColor = vectorProperty;
-				diffuseColor = PlayerSettings.colorSpace == ColorSpace.Linear ? diffuseColor.gamma : diffuseColor;
+                Color diffuseColor = vectorProperty;
+                diffuseColor = PlayerSettings.colorSpace == ColorSpace.Linear ? diffuseColor.gamma : diffuseColor;
                 material.SetColor("_BaseColor", diffuseColor);
                 material.SetColor("_Color", diffuseColor);
             }
@@ -97,4 +96,3 @@ namespace UnityEditor.Rendering.HighDefinition
         }
     }
 }
-

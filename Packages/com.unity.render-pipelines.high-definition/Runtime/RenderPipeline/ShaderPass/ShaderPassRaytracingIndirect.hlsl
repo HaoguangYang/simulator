@@ -8,22 +8,21 @@ void ClosestHitMain(inout RayIntersection rayIntersection : SV_RayPayload, Attri
 {
     UNITY_XR_ASSIGN_VIEW_INDEX(DispatchRaysIndex().z);
 
-	// The first thing that we should do is grab the intersection vertice
+    // The first thing that we should do is grab the intersection vertice
     IntersectionVertex currentVertex;
     GetCurrentIntersectionVertex(attributeData, currentVertex);
 
     // Build the Frag inputs from the intersection vertice
     FragInputs fragInput;
-    BuildFragInputsFromIntersection(currentVertex, rayIntersection.incidentDirection, fragInput);
+    BuildFragInputsFromIntersection(currentVertex, fragInput);
 
     // Compute the view vector
-    float3 viewWS = -rayIntersection.incidentDirection;
+    float3 viewWS = -WorldRayDirection();
     float3 pointWSPos = fragInput.positionRWS;
 
     // Make sure to add the additional travel distance
-    float travelDistance = length(fragInput.positionRWS - rayIntersection.origin);
-    rayIntersection.t = travelDistance;
-    rayIntersection.cone.width += travelDistance * rayIntersection.cone.spreadAngle;
+    rayIntersection.t = RayTCurrent();
+    rayIntersection.cone.width += rayIntersection.t * rayIntersection.cone.spreadAngle;
 
     PositionInputs posInput = GetPositionInput(rayIntersection.pixelCoord, _ScreenSize.zw, fragInput.positionRWS);
 
@@ -37,15 +36,7 @@ void ClosestHitMain(inout RayIntersection rayIntersection : SV_RayPayload, Attri
     BSDFData bsdfData = ConvertSurfaceDataToBSDFData(posInput.positionSS, surfaceData);
 
     // No need for SurfaceData after this line
-
 #ifdef HAS_LIGHTLOOP
-    // We do not want to use the diffuse when we compute the indirect diffuse
-    if (_RayTracingDiffuseLightingOnly)
-    {
-        builtinData.bakeDiffuseLighting = float3(0.0, 0.0, 0.0);
-        builtinData.backBakeDiffuseLighting = float3(0.0, 0.0, 0.0);
-    }
-
     // Compute the prelight data
     PreLightData preLightData = GetPreLightData(viewWS, posInput, bsdfData);
     float3 reflected = float3(0.0, 0.0, 0.0);
@@ -80,13 +71,12 @@ void ClosestHitMain(inout RayIntersection rayIntersection : SV_RayPayload, Attri
         // Create and init the RayIntersection structure for this
         RayIntersection reflectedIntersection;
         reflectedIntersection.color = float3(0.0, 0.0, 0.0);
-        reflectedIntersection.incidentDirection = rayDescriptor.Direction;
         reflectedIntersection.origin = rayDescriptor.Origin;
         reflectedIntersection.t = -1.0f;
         reflectedIntersection.remainingDepth = rayIntersection.remainingDepth + 1;
         reflectedIntersection.pixelCoord = rayIntersection.pixelCoord;
         reflectedIntersection.sampleIndex = rayIntersection.sampleIndex;
-        
+
         // In order to achieve filtering for the textures, we need to compute the spread angle of the pixel
         reflectedIntersection.cone.spreadAngle = rayIntersection.cone.spreadAngle;
         reflectedIntersection.cone.width = rayIntersection.cone.width;
@@ -113,10 +103,10 @@ void ClosestHitMain(inout RayIntersection rayIntersection : SV_RayPayload, Attri
         }
     }
     #endif
-    
+
     // Run the lightloop
     LightLoopOutput lightLoopOutput;
-    LightLoop(viewWS, posInput, preLightData, bsdfData, builtinData, reflectedWeight, 0.0, reflected,  float3(0.0, 0.0, 0.0), lightLoopOutput);
+    LightLoop(viewWS, posInput, preLightData, bsdfData, builtinData, float4(reflected, reflectedWeight), float4(0.0, 0.0, 0.0, 0.0), lightLoopOutput);
 
     // Alias
     float3 diffuseLighting = lightLoopOutput.diffuseLighting;
@@ -150,14 +140,13 @@ void AnyHitMain(inout RayIntersection rayIntersection : SV_RayPayload, Attribute
 
     // Build the Frag inputs from the intersection vertice
     FragInputs fragInput;
-    BuildFragInputsFromIntersection(currentVertex, rayIntersection.incidentDirection, fragInput);
+    BuildFragInputsFromIntersection(currentVertex, fragInput);
 
     // Compute the view vector
-    float3 viewWS = -rayIntersection.incidentDirection;
+    float3 viewWS = -WorldRayDirection();
 
     // Compute the distance of the ray
-    float travelDistance = length(fragInput.positionRWS - rayIntersection.origin);
-    rayIntersection.t = travelDistance;
+    rayIntersection.t = RayTCurrent();
 
     PositionInputs posInput;
     posInput.positionWS = fragInput.positionRWS;
@@ -168,7 +157,7 @@ void AnyHitMain(inout RayIntersection rayIntersection : SV_RayPayload, Attribute
     BuiltinData builtinData;
     bool isVisible;
     GetSurfaceAndBuiltinData(fragInput, viewWS, posInput, surfaceData, builtinData, currentVertex, rayIntersection.cone, isVisible);
-    
+
     // If this fella should be culled, then we cull it
     if(!isVisible)
     {

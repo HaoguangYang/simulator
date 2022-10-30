@@ -11,7 +11,7 @@
 #pragma multi_compile _ PLANAR_OBLIQUE_DEPTH
 
 // In some cases we might want to avoid stopping integrating volumetric even if > max distance if the gradient is very big.
-// Realistically, with the dilation step this was never seen as necessary. 
+// Realistically, with the dilation step this was never seen as necessary.
 #define GENERATE_GRADIENT 0
 
 #if GENERATE_GRADIENT
@@ -23,7 +23,7 @@
 #endif
 
 #ifdef PLATFORM_LANE_COUNT
-#define WAVE_SIZE   PLATFORM_LANE_COUNT  
+#define WAVE_SIZE   PLATFORM_LANE_COUNT
 #else
 #define WAVE_SIZE   64
 #endif
@@ -32,7 +32,7 @@
 // ---------------------------------
 CBUFFER_START(cb)
 float4 _SrcOffsetAndLimit;
-float  _DilationWidth; 
+float  _DilationWidth;
 CBUFFER_END
 
 #define _SrcLimit _SrcOffsetAndLimit.xy
@@ -76,7 +76,7 @@ float PrepareDepthForOutput(float depth)
 // GetDepthToDownsample should be used to enforce the right depth is used.
 float ParallelReduction(uint gid, uint threadIdx, float depth)
 {
-#ifdef PLATFORM_SUPPORTS_WAVE_INTRINSICS 
+#ifdef PLATFORM_SUPPORTS_WAVE_INTRINSICS
     return WaveActiveMax(depth);
 #else
     gs_maxDepth[threadIdx] = depth;
@@ -190,12 +190,17 @@ void DilateMask(uint3 dispatchThreadId : SV_DispatchThreadID, uint gid : SV_Grou
 
     int dilationWidth = _DilationWidth;
 
+    // Make sure to convert the coordinate to signed for the kernel taps
+    int2 currentCoord = (int2)dispatchThreadId.xy;
+
     OUT_MASK_FORMAT dilatedMaxVals = -1;
     for (int i = -dilationWidth; i <= dilationWidth; ++i)
     {
         for (int j = -dilationWidth; j <= dilationWidth; ++j)
         {
-            OUT_MASK_FORMAT s = _InputTexture[COORD_TEXTURE2D_X(min(dispatchThreadId.xy + int2(i, j), _SrcLimit))].MASK_SWIZZLE;
+            // Evaluate the tap coordinate and clamp it to the texture
+            int2 tapCoordinate = clamp(currentCoord + int2(i, j), 0, _SrcLimit - 1);
+            OUT_MASK_FORMAT s = _InputTexture[COORD_TEXTURE2D_X(tapCoordinate)].MASK_SWIZZLE;
             dilatedMaxVals = DilateValue(dilatedMaxVals, s);
         }
     }

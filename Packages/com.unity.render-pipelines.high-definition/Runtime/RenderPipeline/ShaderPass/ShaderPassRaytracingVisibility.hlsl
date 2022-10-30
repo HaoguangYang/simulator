@@ -13,7 +13,7 @@ void ClosestHitVisibility(inout RayIntersection rayIntersection : SV_RayPayload,
 
     // Build the Frag inputs from the intersection vertice
     FragInputs fragInput;
-    BuildFragInputsFromIntersection(currentVertex, rayIntersection.incidentDirection, fragInput);
+    BuildFragInputsFromIntersection(currentVertex, fragInput);
 
     // Compute the distance of the ray
     rayIntersection.t = RayTCurrent();
@@ -30,16 +30,16 @@ void AnyHitVisibility(inout RayIntersection rayIntersection : SV_RayPayload, Att
 {
     UNITY_XR_ASSIGN_VIEW_INDEX(DispatchRaysIndex().z);
 
-	// The first thing that we should do is grab the intersection vertice
+    // The first thing that we should do is grab the intersection vertice
     IntersectionVertex currentVertex;
     GetCurrentIntersectionVertex(attributeData, currentVertex);
 
     // Build the Frag inputs from the intersection vertice
     FragInputs fragInput;
-    BuildFragInputsFromIntersection(currentVertex, rayIntersection.incidentDirection, fragInput);
+    BuildFragInputsFromIntersection(currentVertex, fragInput);
 
     // Compute the view vector
-    float3 viewWS = -rayIntersection.incidentDirection;
+    float3 viewWS = -WorldRayDirection();
 
     // Compute the distance of the ray
     rayIntersection.t = RayTCurrent();

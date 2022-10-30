@@ -1,5 +1,5 @@
 //
-// This file was automatically generated. Please don't edit by hand. Execute Editor command [ Edit / Render Pipeline / Generate Shader Includes ] instead
+// This file was automatically generated. Please don't edit by hand. Execute Editor command [ Edit > Rendering > Generate Shader Includes ] instead
 //
 
 #ifndef HDRAYTRACINGMANAGER_CS_HLSL
@@ -16,6 +16,7 @@
 #define RAYTRACINGRENDERERFLAG_GLOBAL_ILLUMINATION (32)
 #define RAYTRACINGRENDERERFLAG_RECURSIVE_RENDERING (64)
 #define RAYTRACINGRENDERERFLAG_PATH_TRACING (128)
+#define RAYTRACINGRENDERERFLAG_ALL (255)
 
 
 #endif

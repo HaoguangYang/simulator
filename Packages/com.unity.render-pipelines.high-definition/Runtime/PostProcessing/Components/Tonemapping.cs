@@ -40,8 +40,8 @@ namespace UnityEngine.Rendering.HighDefinition
     /// <summary>
     /// A volume component that holds settings for the Tonemapping effect.
     /// </summary>
-    [Serializable, VolumeComponentMenu("Post-processing/Tonemapping")]
-    [HelpURL(Documentation.baseURL + Documentation.version + Documentation.subURL + "Post-Processing-Tonemapping" + Documentation.endURL)]
+    [Serializable, VolumeComponentMenuForRenderPipeline("Post-processing/Tonemapping", typeof(HDRenderPipeline))]
+    [HDRPHelpURLAttribute("Post-Processing-Tonemapping")]
     public sealed class Tonemapping : VolumeComponent, IPostProcessComponent
     {
         /// <summary>
@@ -101,7 +101,7 @@ namespace UnityEngine.Rendering.HighDefinition
         /// This parameter is only used when <see cref="TonemappingMode.External"/> is set.
         /// </summary>
         [Tooltip("A custom 3D texture lookup table to apply.")]
-        public TextureParameter lutTexture = new TextureParameter(null);
+        public Texture3DParameter lutTexture = new Texture3DParameter(null);
 
         /// <summary>
         /// How much of the lookup texture will contribute to the color grading effect.
@@ -141,12 +141,12 @@ namespace UnityEngine.Rendering.HighDefinition
             {
                 case Texture3D t:
                     valid |= t.width == t.height
-                          && t.height == t.depth;
+                        && t.height == t.depth;
                     break;
                 case RenderTexture rt:
                     valid |= rt.dimension == TextureDimension.Tex3D
-                          && rt.width == rt.height
-                          && rt.height == rt.volumeDepth;
+                        && rt.width == rt.height
+                        && rt.height == rt.volumeDepth;
                     break;
             }
 
@@ -161,7 +161,7 @@ namespace UnityEngine.Rendering.HighDefinition
     public sealed class TonemappingModeParameter : VolumeParameter<TonemappingMode>
     {
         /// <summary>
-        /// Creates a new <see cref="VignetteModeParameter"/> instance.
+        /// Creates a new <see cref="TonemappingModeParameter"/> instance.
         /// </summary>
         /// <param name="value">The initial value to store in the parameter.</param>
         /// <param name="overrideState">The initial override state for the parameter.</param>

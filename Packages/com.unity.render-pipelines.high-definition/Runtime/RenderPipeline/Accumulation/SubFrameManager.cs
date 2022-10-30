@@ -1,10 +1,10 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using UnityEngine.Experimental.Rendering;
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
 #if UNITY_EDITOR
-    using UnityEditor;
+using UnityEditor;
 #endif // UNITY_EDITOR
 
 namespace UnityEngine.Rendering.HighDefinition
@@ -22,9 +22,10 @@ namespace UnityEngine.Rendering.HighDefinition
         public uint height;
         public bool skyEnabled;
         public bool fogEnabled;
+        public ulong accelSize;
 
         public float accumulatedWeight;
-        public uint  currentIteration;
+        public uint currentIteration;
     }
 
     // Helper class to manage time-scale in Unity when recording multi-frame sequences where one final frame is an accumulation of multiple sub-frames
@@ -83,15 +84,18 @@ namespace UnityEngine.Rendering.HighDefinition
             camData.ResetIteration();
             SetCameraData(camID, camData);
         }
+
         internal void Reset()
         {
             foreach (int camID in m_CameraCache.Keys.ToList())
                 Reset(camID);
         }
+
         internal void Clear()
         {
             m_CameraCache.Clear();
         }
+
         internal void SelectiveReset(uint maxSamples)
         {
             foreach (int camID in m_CameraCache.Keys.ToList())
@@ -148,7 +152,7 @@ namespace UnityEngine.Rendering.HighDefinition
 
         internal void EndRecording()
         {
-            m_IsRecording = false;
+            m_IsRecording  = false;
             m_ShutterCurve = null;
 
             // Reset the time-related values that we have adjusted
@@ -190,7 +194,7 @@ namespace UnityEngine.Rendering.HighDefinition
                 }
             }
 
-            if (maxIteration == m_AccumulationSamples)
+            if (maxIteration >= m_AccumulationSamples)
             {
                 Reset();
             }
@@ -240,7 +244,7 @@ namespace UnityEngine.Rendering.HighDefinition
             CameraData camData = GetCameraData(camID);
 
             float totalWeight = camData.accumulatedWeight;
-            float time = m_AccumulationSamples > 0 ? (float) camData.currentIteration / m_AccumulationSamples : 0.0f;
+            float time = m_AccumulationSamples > 0 ? (float)camData.currentIteration / m_AccumulationSamples : 0.0f;
 
             float weight = (isRecording && m_ShutterInterval > 0) ? ShutterProfile(time) : 1.0f;
 
@@ -301,77 +305,90 @@ namespace UnityEngine.Rendering.HighDefinition
             m_SubFrameManager.PrepareNewSubFrame();
         }
 
-        struct RenderAccumulationParameters
+        /// <summary>
+        /// Checks if the multi-frame accumulation is completed for a given camera.
+        /// </summary>
+        /// <param name="hdCamera">Camera for which the accumulation status is checked.</param>
+        /// <returns><c>true</c> if the accumulation is completed, <c>false</c> otherwise.</returns>
+        public bool IsFrameCompleted(HDCamera hdCamera)
         {
-            public ComputeShader    accumulationCS;
-            public int              accumulationKernel;
-            public SubFrameManager  subFrameManager;
-            public bool             needExposure;
-            public HDCamera         hdCamera;
+            int camID = hdCamera.camera.GetInstanceID();
+            CameraData camData = m_SubFrameManager.GetCameraData(camID);
+            return camData.currentIteration >= m_SubFrameManager.subFrameCount;
         }
 
-        RenderAccumulationParameters PrepareRenderAccumulationParameters(HDCamera hdCamera, bool needExposure, bool inputFromRadianceTexture)
+        class RenderAccumulationPassData
         {
-            var parameters = new RenderAccumulationParameters();
+            public ComputeShader accumulationCS;
+            public int accumulationKernel;
+            public SubFrameManager subFrameManager;
+            public bool needExposure;
+            public HDCamera hdCamera;
 
-            parameters.accumulationCS = m_Asset.renderPipelineResources.shaders.accumulationCS;
-            parameters.accumulationKernel = parameters.accumulationCS.FindKernel("KMain");
-            parameters.subFrameManager = m_SubFrameManager;
-            parameters.needExposure = needExposure;
-            parameters.hdCamera = hdCamera;
-
-            parameters.accumulationCS.shaderKeywords = null;
-            if (inputFromRadianceTexture)
-            {
-                parameters.accumulationCS.EnableKeyword("INPUT_FROM_RADIANCE_TEXTURE");
-            }
-            return parameters;
+            public TextureHandle input;
+            public TextureHandle output;
+            public TextureHandle history;
         }
 
-        void RenderAccumulation(HDCamera hdCamera, RTHandle inputTexture, RTHandle outputTexture, bool needExposure, CommandBuffer cmd)
+        void RenderAccumulation(RenderGraph renderGraph, HDCamera hdCamera, TextureHandle inputTexture, TextureHandle outputTexture, bool needExposure)
         {
-            // Grab the history buffer
-            RTHandle history = hdCamera.GetCurrentFrameRT((int)HDCameraFrameHistoryType.PathTracing)
-                ?? hdCamera.AllocHistoryFrameRT((int)HDCameraFrameHistoryType.PathTracing, PathTracingHistoryBufferAllocatorFunction, 1);
-
-            bool inputFromRadianceTexture = !inputTexture.Equals(outputTexture);
-            var parameters = PrepareRenderAccumulationParameters(hdCamera, needExposure, inputFromRadianceTexture);
-            RenderAccumulation(parameters, inputTexture, outputTexture, history, cmd);
-        }
-
-        static void RenderAccumulation(in RenderAccumulationParameters parameters, RTHandle inputTexture, RTHandle outputTexture, RTHandle historyTexture, CommandBuffer cmd)
-        {
-            ComputeShader accumulationShader = parameters.accumulationCS;
-
-            // Check the validity of the state before moving on with the computation
-            if (!accumulationShader)
-                return;
-
-            // Get the per-camera data
-            int camID = parameters.hdCamera.camera.GetInstanceID();
-            Vector4 frameWeights = parameters.subFrameManager.ComputeFrameWeights(camID);
-            CameraData camData = parameters.subFrameManager.GetCameraData(camID);
-
-            // Accumulate the path tracing results
-            cmd.SetComputeIntParam(accumulationShader, HDShaderIDs._AccumulationFrameIndex, (int)camData.currentIteration);
-            cmd.SetComputeIntParam(accumulationShader, HDShaderIDs._AccumulationNumSamples, (int)parameters.subFrameManager.subFrameCount);
-            cmd.SetComputeTextureParam(accumulationShader, parameters.accumulationKernel, HDShaderIDs._AccumulatedFrameTexture, historyTexture);
-            cmd.SetComputeTextureParam(accumulationShader, parameters.accumulationKernel, HDShaderIDs._CameraColorTextureRW, outputTexture);
-            if (!inputTexture.Equals(outputTexture))
+            using (var builder = renderGraph.AddRenderPass<RenderAccumulationPassData>("Render Accumulation", out var passData))
             {
-                cmd.SetComputeTextureParam(accumulationShader, parameters.accumulationKernel, HDShaderIDs._RadianceTexture, inputTexture);
-            }
-            cmd.SetComputeVectorParam(accumulationShader, HDShaderIDs._AccumulationWeights, frameWeights);
-            cmd.SetComputeIntParam(accumulationShader, HDShaderIDs._AccumulationNeedsExposure, parameters.needExposure ? 1 : 0);
-            cmd.DispatchCompute(accumulationShader, parameters.accumulationKernel, (parameters.hdCamera.actualWidth + 7) / 8, (parameters.hdCamera.actualHeight + 7) / 8, parameters.hdCamera.viewCount);
+                // Grab the history buffer
+                TextureHandle history = renderGraph.ImportTexture(hdCamera.GetCurrentFrameRT((int)HDCameraFrameHistoryType.PathTracing)
+                    ?? hdCamera.AllocHistoryFrameRT((int)HDCameraFrameHistoryType.PathTracing, PathTracingHistoryBufferAllocatorFunction, 1));
 
-            // Increment the iteration counter, if we haven't converged yet
-            if (camData.currentIteration < parameters.subFrameManager.subFrameCount)
-            {
-                camData.currentIteration++;
-                parameters.subFrameManager.SetCameraData(camID, camData);
+                bool inputFromRadianceTexture = !inputTexture.Equals(outputTexture);
+                passData.accumulationCS = m_Asset.renderPipelineResources.shaders.accumulationCS;
+                passData.accumulationKernel = passData.accumulationCS.FindKernel("KMain");
+                passData.subFrameManager = m_SubFrameManager;
+                passData.needExposure = needExposure;
+                passData.hdCamera = hdCamera;
+                passData.accumulationCS.shaderKeywords = null;
+                if (inputFromRadianceTexture)
+                    passData.accumulationCS.EnableKeyword("INPUT_FROM_FRAME_TEXTURE");
+                passData.input = builder.ReadTexture(inputTexture);
+                passData.output = builder.WriteTexture(outputTexture);
+                passData.history = builder.WriteTexture(history);
+
+                builder.SetRenderFunc(
+                    (RenderAccumulationPassData data, RenderGraphContext ctx) =>
+                    {
+                        ComputeShader accumulationShader = data.accumulationCS;
+
+                        // Check the validity of the state before moving on with the computation
+                        if (!accumulationShader)
+                            return;
+
+                        // Get the per-camera data
+                        int camID = data.hdCamera.camera.GetInstanceID();
+                        Vector4 frameWeights = data.subFrameManager.ComputeFrameWeights(camID);
+                        CameraData camData = data.subFrameManager.GetCameraData(camID);
+
+                        RTHandle input = data.input;
+                        RTHandle output = data.output;
+
+                        // Accumulate the path tracing results
+                        ctx.cmd.SetComputeIntParam(accumulationShader, HDShaderIDs._AccumulationFrameIndex, (int)camData.currentIteration);
+                        ctx.cmd.SetComputeIntParam(accumulationShader, HDShaderIDs._AccumulationNumSamples, (int)data.subFrameManager.subFrameCount);
+                        ctx.cmd.SetComputeTextureParam(accumulationShader, data.accumulationKernel, HDShaderIDs._AccumulatedFrameTexture, data.history);
+                        ctx.cmd.SetComputeTextureParam(accumulationShader, data.accumulationKernel, HDShaderIDs._CameraColorTextureRW, output);
+                        if (!input.Equals(output))
+                        {
+                            ctx.cmd.SetComputeTextureParam(accumulationShader, data.accumulationKernel, HDShaderIDs._FrameTexture, input);
+                        }
+                        ctx.cmd.SetComputeVectorParam(accumulationShader, HDShaderIDs._AccumulationWeights, frameWeights);
+                        ctx.cmd.SetComputeIntParam(accumulationShader, HDShaderIDs._AccumulationNeedsExposure, data.needExposure ? 1 : 0);
+                        ctx.cmd.DispatchCompute(accumulationShader, data.accumulationKernel, (data.hdCamera.actualWidth + 7) / 8, (data.hdCamera.actualHeight + 7) / 8, data.hdCamera.viewCount);
+
+                        // Increment the iteration counter, if we haven't converged yet
+                        if (camData.currentIteration < data.subFrameManager.subFrameCount)
+                        {
+                            camData.currentIteration++;
+                            data.subFrameManager.SetCameraData(camID, camData);
+                        }
+                    });
             }
         }
     }
-
 }

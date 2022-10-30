@@ -13,8 +13,8 @@ namespace UnityEditor.Rendering.HighDefinition
 {
     class FBXMaterialDescriptionPreprocessor : AssetPostprocessor
     {
-        static readonly uint k_Version = 1;
-        static readonly int k_Order = 2;
+        static readonly uint k_Version = 2;
+        static readonly int k_Order = -980;
         static readonly string k_ShaderPath = "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Lit/Lit.shader";
         public override uint GetVersion()
         {
@@ -28,8 +28,7 @@ namespace UnityEditor.Rendering.HighDefinition
 
         public void OnPreprocessMaterialDescription(MaterialDescription description, Material material, AnimationClip[] clips)
         {
-            var pipelineAsset = GraphicsSettings.currentRenderPipeline;
-            if (!pipelineAsset || pipelineAsset.GetType() != typeof(HDRenderPipelineAsset))
+            if (HDRenderPipeline.currentAsset == null)
                 return;
 
             var lowerCaseExtension = Path.GetExtension(assetPath).ToLower();
@@ -138,8 +137,8 @@ namespace UnityEditor.Rendering.HighDefinition
                     material.globalIlluminationFlags |= MaterialGlobalIlluminationFlags.RealtimeEmissive;
                 }
             }
-            else if ( description.TryGetProperty("EmissiveColor", out vectorProperty) && vectorProperty.magnitude > vectorProperty.w
-                || description.HasAnimationCurve("EmissiveColor.x"))
+            else if (description.TryGetProperty("EmissiveColor", out vectorProperty) && vectorProperty.magnitude > vectorProperty.w
+                     || description.HasAnimationCurve("EmissiveColor.x"))
             {
                 if (description.TryGetProperty("EmissiveFactor", out floatProperty))
                     vectorProperty *= floatProperty;
@@ -153,7 +152,13 @@ namespace UnityEditor.Rendering.HighDefinition
                 }
             }
 
-            material.SetFloat("_Glossiness", 0.0f);
+            if (description.TryGetProperty("Shininess", out float shininess))
+            {
+                var glossiness = Mathf.Sqrt(shininess * 0.01f);
+                material.SetFloat("_Smoothness", glossiness);
+            }
+            else
+                material.SetFloat("_Smoothness", 0.0f);
 
             if (PlayerSettings.colorSpace == ColorSpace.Linear)
                 RemapAndTransformColorCurves(description, clips, "DiffuseColor", "_BaseColor", ConvertFloatLinearToGamma);

@@ -82,7 +82,7 @@ namespace UnityEditor.Rendering.HighDefinition
                 Vector3 blendNormalPositive = serialized.boxBlendNormalDistancePositive.vector3Value;
                 Vector3 blendNormalNegative = serialized.boxBlendNormalDistanceNegative.vector3Value;
                 Vector3 size = serialized.boxSize.vector3Value;
-                for(int i = 0; i<3; ++i)
+                for (int i = 0; i < 3; ++i)
                 {
                     size[i] = Mathf.Max(0f, size[i]);
                 }
@@ -163,7 +163,7 @@ namespace UnityEditor.Rendering.HighDefinition
             if (serialized.editorAdvancedModeEnabled.boolValue)
             {
                 if (!(Mathf.Approximately(Vector3.SqrMagnitude(blendDistancePositive.vector3Value - editorAdvancedModeBlendDistancePositive.vector3Value), 0f)
-                    && Mathf.Approximately(Vector3.SqrMagnitude(blendDistanceNegative.vector3Value - editorAdvancedModeBlendDistanceNegative.vector3Value), 0f)))
+                      && Mathf.Approximately(Vector3.SqrMagnitude(blendDistanceNegative.vector3Value - editorAdvancedModeBlendDistanceNegative.vector3Value), 0f)))
                 {
                     blendDistancePositive.vector3Value = editorAdvancedModeBlendDistancePositive.vector3Value;
                     blendDistanceNegative.vector3Value = editorAdvancedModeBlendDistanceNegative.vector3Value;
@@ -217,7 +217,13 @@ namespace UnityEditor.Rendering.HighDefinition
         static void Drawer_SectionShapeSphere(SerializedInfluenceVolume serialized, Editor owner, bool drawOffset, bool drawNormal)
         {
             EditorGUILayout.BeginHorizontal();
+            EditorGUI.BeginChangeCheck();
             EditorGUILayout.PropertyField(serialized.sphereRadius, radiusContent);
+            if (EditorGUI.EndChangeCheck())
+            {
+                if (serialized.sphereRadius.floatValue < serialized.sphereBlendDistance.floatValue)
+                    serialized.sphereBlendDistance.floatValue = serialized.sphereRadius.floatValue;
+            }
             HDProbeUI.Drawer_ToolBarButton(HDProbeUI.ToolBar.InfluenceShape, owner, GUILayout.Width(28f), GUILayout.MinHeight(22f));
             EditorGUILayout.EndHorizontal();
 

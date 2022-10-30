@@ -443,11 +443,11 @@ namespace Simulator.PointCloud
             var height = viewportSettings.height;
             var refSize = rt.referenceSize;
 
-            var msaaSamples = ((HDRenderPipeline) RenderPipelineManager.currentPipeline).MSAASamples;
+            //var msaaSamples = ((HDRenderPipeline) RenderPipelineManager.currentPipeline).MSAASamples;
             // TODO: verify if this is still needed after updating HDRP above 10.3.2
             // In previous versions (7.3) viewport size was updated automatically - now it has to be manually managed
             // This can have critical performance impact if new MSAA samples settings don't not match current settings
-            RTHandles.SetReferenceSize(width, height, msaaSamples);
+            RTHandles.SetReferenceSize(width, height);//, msaaSamples);
 
             var resolution = new Vector2Int(width, height);
             var rtHandleRefSize = new Vector2Int(RTHandles.maxWidth, RTHandles.maxHeight);

@@ -8,8 +8,14 @@
 PackedVaryingsType Vert(AttributesMesh inputMesh, AttributesPass inputPass)
 {
     VaryingsType varyingsType;
+#ifdef HAVE_VFX_MODIFICATION
+    AttributesElement inputElement;
+    varyingsType.vmesh = VertMesh(inputMesh, inputElement);
+    return MotionVectorVS(varyingsType, inputMesh, inputPass, inputElement);
+#else
     varyingsType.vmesh = VertMesh(inputMesh);
     return MotionVectorVS(varyingsType, inputMesh, inputPass);
+#endif
 }
 
 #ifdef TESSELLATION_ON
@@ -18,12 +24,7 @@ PackedVaryingsToPS VertTesselation(VaryingsToDS input)
 {
     VaryingsToPS output;
     output.vmesh = VertMeshTesselation(input.vmesh);
-    MotionVectorPositionZBias(output);
-
-    output.vpass.positionCS = input.vpass.positionCS;
-    output.vpass.previousPositionCS = input.vpass.previousPositionCS;
-
-    return PackVaryingsToPS(output);
+    return MotionVectorTessellation(output, input);
 }
 
 #endif // TESSELLATION_ON
@@ -64,7 +65,6 @@ PackedVaryingsToPS VertTesselation(VaryingsToDS input)
     return PackVaryingsToPS(output);
 }
 
-
 #endif // TESSELLATION_ON
 
 #endif // _WRITE_TRANSPARENT_MOTION_VECTOR
@@ -75,32 +75,35 @@ PackedVaryingsToPS VertTesselation(VaryingsToDS input)
 #endif
 
 #ifdef UNITY_VIRTUAL_TEXTURING
-#define VT_BUFFER_TARGET SV_Target1
-#define EXTRA_BUFFER_TARGET SV_Target2
+    #ifdef OUTPUT_SPLIT_LIGHTING
+    #define DIFFUSE_LIGHTING_TARGET SV_Target2
+    #define SSS_BUFFER_TARGET SV_Target3
+    #elif defined(_WRITE_TRANSPARENT_MOTION_VECTOR)
+    #define MOTION_VECTOR_TARGET SV_Target2
+    #endif
 #else
-#define EXTRA_BUFFER_TARGET SV_Target1
+    #ifdef OUTPUT_SPLIT_LIGHTING
+    #define DIFFUSE_LIGHTING_TARGET SV_Target1
+    #define SSS_BUFFER_TARGET SV_Target2
+    #elif defined(_WRITE_TRANSPARENT_MOTION_VECTOR)
+    #define MOTION_VECTOR_TARGET SV_Target1
+    #endif
 #endif
 
-void Frag(PackedVaryingsToPS packedInput,
-        #ifdef OUTPUT_SPLIT_LIGHTING
-            out float4 outColor : SV_Target0,  // outSpecularLighting
-            #ifdef UNITY_VIRTUAL_TEXTURING
-                out float4 outVTFeedback : VT_BUFFER_TARGET,
-            #endif
-            out float4 outDiffuseLighting : EXTRA_BUFFER_TARGET,
-            OUTPUT_SSSBUFFER(outSSSBuffer)
-        #else
-            out float4 outColor : SV_Target0
-            #ifdef UNITY_VIRTUAL_TEXTURING
-                ,out float4 outVTFeedback : VT_BUFFER_TARGET
-            #endif
-        #ifdef _WRITE_TRANSPARENT_MOTION_VECTOR
-          , out float4 outMotionVec : EXTRA_BUFFER_TARGET
-        #endif // _WRITE_TRANSPARENT_MOTION_VECTOR
-        #endif // OUTPUT_SPLIT_LIGHTING
-        #ifdef _DEPTHOFFSET_ON
-            , out float outputDepth : SV_Depth
-        #endif
+void Frag(PackedVaryingsToPS packedInput
+    , out float4 outColor : SV_Target0  // outSpecularLighting when outputting split lighting
+    #ifdef UNITY_VIRTUAL_TEXTURING
+        , out float4 outVTFeedback : SV_Target1
+    #endif
+    #ifdef OUTPUT_SPLIT_LIGHTING
+        , out float4 outDiffuseLighting : DIFFUSE_LIGHTING_TARGET
+        , OUTPUT_SSSBUFFER(outSSSBuffer) : SSS_BUFFER_TARGET
+    #elif defined(_WRITE_TRANSPARENT_MOTION_VECTOR)
+          , out float4 outMotionVec : MOTION_VECTOR_TARGET
+    #endif
+    #ifdef _DEPTHOFFSET_ON
+        , out float outputDepth : DEPTH_OFFSET_SEMANTIC
+    #endif
 )
 {
 #ifdef _WRITE_TRANSPARENT_MOTION_VECTOR
@@ -113,7 +116,7 @@ void Frag(PackedVaryingsToPS packedInput,
     FragInputs input = UnpackVaryingsToFragInputs(packedInput);
 
     // We need to readapt the SS position as our screen space positions are for a low res buffer, but we try to access a full res buffer.
-    input.positionSS.xy = _OffScreenRendering > 0 ? (input.positionSS.xy * _OffScreenDownsampleFactor) : input.positionSS.xy;
+    input.positionSS.xy = _OffScreenRendering > 0 ? (uint2)round(input.positionSS.xy * _OffScreenDownsampleFactor) : input.positionSS.xy;
 
     uint2 tileIndex = uint2(input.positionSS.xy) / GetTileSize();
 
@@ -244,6 +247,12 @@ void Frag(PackedVaryingsToPS packedInput,
             VaryingsPassToPS inputPass = UnpackVaryingsPassToPS(packedInput.vpass);
             bool forceNoMotion = any(unity_MotionVectorsParams.yw == 0.0);
             // outMotionVec is already initialize at the value of forceNoMotion (see above)
+
+             //Motion vector is enabled in SG but not active in VFX
+#if defined(HAVE_VFX_MODIFICATION) && !VFX_FEATURE_MOTION_VECTORS
+            forceNoMotion = true;
+#endif
+
             if (!forceNoMotion)
             {
                 float2 motionVec = CalculateMotionVector(inputPass.positionCS, inputPass.previousPositionCS);

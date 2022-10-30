@@ -43,10 +43,46 @@ void Bresenham(int2 center, float2 lineToDraw, uint centerInfo)
             y += steps.y;
         }
 
-        InterlockedMax(_TileToScatterMax[int2(x, y)], uint(centerInfo));
+
+        InterlockedMax(_TileToScatterMax[COORD_TEXTURE2D_X(int2(x, y))], uint(centerInfo));
     }
 }
 #endif
+
+// Derived from  Voxel traversal along a 3D line (https://dl.acm.org/doi/10.5555/180895.180926)
+void Cohen(int2 center, float2 lineToDraw, uint centerInfo)
+{
+    // We push the extremes by one to be safer. Not great, but works better than not doing it.
+    int2 startPoint = center - 1;
+    int2 dir = ceil(lineToDraw + 1);
+    int2 signs = int2(sign(dir.x), sign(dir.y));
+
+    int2 a = dir * signs;
+    int2 b = 2 * a;
+
+    int2 pos = startPoint;
+
+    int e = a.y - a.x;
+    int l = (a.x + a.y);
+
+    for (int i = 0; i < l; i++)
+    {
+        if (e < 0)
+        {
+            pos.x += signs.x;
+            e += b.y;
+        }
+        else
+        {
+            pos.y += signs.y;
+            e -= b.x;
+        }
+
+        InterlockedMax(_TileToScatterMax[COORD_TEXTURE2D_X(pos)], uint(centerInfo));
+    }
+}
+
+
 
 void DDA(int2 center, float2 lineToDraw, uint centerInfo)
 {
@@ -106,14 +142,14 @@ void TileNeighbourhood(uint3 dispatchID : SV_DispatchThreadID, uint gid : SV_Gro
     if (MotionVecLengthInPixelsFromEncoded(MotionVecData) > 0.5f)
     {
         // Spread Forward
-        DDA(id, maxMotionVectorInTiles, packedTileInfo);
+        Cohen(id, maxMotionVectorInTiles, packedTileInfo);
         // Spread Backward
-        DDA(id, -maxMotionVectorInTiles, packedTileInfo);
+        Cohen(id, -maxMotionVectorInTiles, packedTileInfo);
     }
 
     // TODO: We need to find a better min motionVec determination.
 #if USE_NEIGHBOURHOOD_MIN
-// Find min of the tile in the 1-ring neighbourhood? This is incorrect, but might be worth perf wise. 
+// Find min of the tile in the 1-ring neighbourhood? This is incorrect, but might be worth perf wise.
     float v0 = _TileToScatterMin[COORD_TEXTURE2D_X(clamp(id.xy + int2(-1, 1), int2(0, 0), maxCoords))];
     float v1 = _TileToScatterMin[COORD_TEXTURE2D_X(clamp(id.xy + int2(0, 1), int2(0, 0), maxCoords))];
     float v2 = _TileToScatterMin[COORD_TEXTURE2D_X(clamp(id.xy + int2(1, 1), int2(0, 0), maxCoords))];

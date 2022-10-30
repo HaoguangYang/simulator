@@ -10,6 +10,7 @@ Shader "Hidden/ScriptableRenderPipeline/ShadowBlit"
 
     SubShader
     {
+        Tags{ "RenderPipeline" = "HDRenderPipeline" }
         Pass
         {
             Name "BlitShadows"
@@ -37,7 +38,7 @@ Shader "Hidden/ScriptableRenderPipeline/ShadowBlit"
 
             TEXTURE2D(_CachedShadowmapAtlas);
             float4 _BlitScaleBias;
-             
+
             Varyings Vert(Attributes input)
             {
                 Varyings output;

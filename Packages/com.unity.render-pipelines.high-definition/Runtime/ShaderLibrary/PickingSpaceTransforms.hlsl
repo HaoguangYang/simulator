@@ -10,17 +10,28 @@
 #undef SHADEROPTIONS_CAMERA_RELATIVE_RENDERING
 
 // Define the correct matrices
+#if !defined(HAVE_VFX_MODIFICATION)
 #undef unity_ObjectToWorld
-#undef unity_MatrixVP
-float4x4 unity_MatrixV;
-float4x4 unity_MatrixVP;
-float4x4 glstate_matrix_projection;
+#undef unity_MatrixPreviousM
 
 #undef UNITY_MATRIX_M
 #define UNITY_MATRIX_M unity_ObjectToWorld
 
 #undef UNITY_MATRIX_I_M
 #define UNITY_MATRIX_I_M Inverse(unity_ObjectToWorld)
+
+#undef UNITY_PREV_MATRIX_M
+#define UNITY_PREV_MATRIX_M unity_MatrixPreviousM
+
+#undef UNITY_PREV_MATRIX_I_M
+#define UNITY_PREV_MATRIX_I_M Inverse(unity_MatrixPreviousM)
+
+#endif
+
+#undef unity_MatrixVP
+float4x4 unity_MatrixV;
+float4x4 unity_MatrixVP;
+float4x4 glstate_matrix_projection;
 
 #undef UNITY_MATRIX_V
 #define UNITY_MATRIX_V unity_MatrixV
@@ -31,10 +42,11 @@ float4x4 glstate_matrix_projection;
 #undef UNITY_MATRIX_P
 #define UNITY_MATRIX_P glstate_matrix_projection
 
-
 // Overwrite the SpaceTransforms functions
 #define GetObjectToWorldMatrix GetObjectToWorldMatrix_Picking
 #define GetWorldToObjectMatrix GetWorldToObjectMatrix_Picking
+#define GetPrevObjectToWorldMatrix GetPrevObjectToWorldMatrix_Picking
+#define GetPrevWorldToObjectMatrix GetPrevWorldToObjectMatrix_Picking
 #define GetWorldToViewMatrix GetWorldToViewMatrix_Picking
 #define GetWorldToHClipMatrix GetWorldToHClipMatrix_Picking
 #define GetViewToHClipMatrix GetViewToHClipMatrix_Picking
@@ -77,6 +89,9 @@ float4x4 ScenePickingGetCameraViewProjMatrix()
 #undef UNITY_SPACE_TRANSFORMS_INCLUDED
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
 
+#if defined(HAVE_VFX_MODIFICATION)
+#define VFX_APPLY_CAMERA_POSITION_IN_ELEMENT_MATRIX 1
+#endif
 
 #endif
 #endif

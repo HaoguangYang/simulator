@@ -36,7 +36,7 @@ Shader "Hidden/Shader/AlphaInjection"
 
     TEXTURE2D_X(_InputTexture);
     TEXTURE2D(_AlphaTexture);
-    
+
     float4 CustomPostProcess(Varyings input) : SV_Target
     {
         UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
@@ -51,6 +51,7 @@ Shader "Hidden/Shader/AlphaInjection"
 
     SubShader
     {
+        Tags{ "RenderPipeline" = "HDRenderPipeline" }
         Pass
         {
             Name "AlphaInjection"

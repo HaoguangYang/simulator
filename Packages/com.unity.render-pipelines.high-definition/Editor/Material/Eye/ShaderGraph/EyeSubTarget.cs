@@ -22,12 +22,10 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
 
         static string[] passTemplateMaterialDirectories = new string[]
         {
-            $"{HDUtils.GetHDRenderPipelinePath()}Editor/Material/Eye/ShaderGraph/",
-            $"{HDUtils.GetHDRenderPipelinePath()}Editor/Material/ShaderGraph/Templates/"
+            $"{HDUtils.GetHDRenderPipelinePath()}Editor/Material/Eye/ShaderGraph/"
         };
 
         protected override string[] templateMaterialDirectories => passTemplateMaterialDirectories;
-        protected override string customInspector => "Rendering.HighDefinition.LightingShaderGraphGUI";
         protected override GUID subTargetAssetGuid => kSubTargetSourceCodeGuid;
         protected override ShaderID shaderID => HDShaderUtils.ShaderID.SG_Eye;
         protected override string subShaderInclude => "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/Eye/Eye.hlsl";
@@ -49,15 +47,15 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
             set => m_EyeData = value;
         }
 
-        public static FieldDescriptor Eye =                     new FieldDescriptor(kMaterial, "Eye", "_MATERIAL_FEATURE_EYE 1");
-        public static FieldDescriptor EyeCinematic =            new FieldDescriptor(kMaterial, "EyeCinematic", "_MATERIAL_FEATURE_EYE_CINEMATIC 1");
+        public static FieldDescriptor Eye = new FieldDescriptor(kMaterial, "Eye", "_MATERIAL_FEATURE_EYE 1");
+        public static FieldDescriptor EyeCinematic = new FieldDescriptor(kMaterial, "EyeCinematic", "_MATERIAL_FEATURE_EYE_CINEMATIC 1");
 
         protected override SubShaderDescriptor GetRaytracingSubShaderDescriptor()
         {
             var descriptor = base.GetRaytracingSubShaderDescriptor();
 
             if (eyeData.subsurfaceScattering)
-                descriptor.passes.Add(HDShaderPasses.GenerateRaytracingSubsurface(true));
+                descriptor.passes.Add(HDShaderPasses.GenerateRaytracingSubsurface());
 
             return descriptor;
         }
@@ -67,13 +65,13 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
             base.GetFields(ref context);
 
             // Eye specific properties
-            context.AddField(Eye,                                  eyeData.materialType == EyeData.MaterialType.Eye);
-            context.AddField(EyeCinematic,                         eyeData.materialType == EyeData.MaterialType.EyeCinematic);
-            context.AddField(SubsurfaceScattering,                 eyeData.subsurfaceScattering && systemData.surfaceType != SurfaceType.Transparent);
+            context.AddField(Eye, eyeData.materialType == EyeData.MaterialType.Eye);
+            context.AddField(EyeCinematic, eyeData.materialType == EyeData.MaterialType.EyeCinematic);
+            context.AddField(SubsurfaceScattering, eyeData.subsurfaceScattering && systemData.surfaceType != SurfaceType.Transparent);
 
             context.AddField(SpecularAA, lightingData.specularAA &&
-                                context.pass.validPixelBlocks.Contains(HDBlockFields.SurfaceDescription.SpecularAAThreshold) &&
-                                context.pass.validPixelBlocks.Contains(HDBlockFields.SurfaceDescription.SpecularAAScreenSpaceVariance));
+                context.pass.validPixelBlocks.Contains(HDBlockFields.SurfaceDescription.SpecularAAThreshold) &&
+                context.pass.validPixelBlocks.Contains(HDBlockFields.SurfaceDescription.SpecularAAScreenSpaceVariance));
         }
 
         public override void GetActiveBlocks(ref TargetActiveBlockContext context)
@@ -81,14 +79,14 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
             base.GetActiveBlocks(ref context);
 
             // Eye specific blocks
-            context.AddBlock(HDBlockFields.SurfaceDescription.IrisNormalOS,               eyeData.irisNormal && lightingData.normalDropOffSpace == NormalDropOffSpace.Object);
-            context.AddBlock(HDBlockFields.SurfaceDescription.IrisNormalTS,               eyeData.irisNormal && lightingData.normalDropOffSpace == NormalDropOffSpace.Tangent);
-            context.AddBlock(HDBlockFields.SurfaceDescription.IrisNormalWS,               eyeData.irisNormal && lightingData.normalDropOffSpace == NormalDropOffSpace.World);
+            context.AddBlock(HDBlockFields.SurfaceDescription.IrisNormalOS, eyeData.irisNormal && lightingData.normalDropOffSpace == NormalDropOffSpace.Object);
+            context.AddBlock(HDBlockFields.SurfaceDescription.IrisNormalTS, eyeData.irisNormal && lightingData.normalDropOffSpace == NormalDropOffSpace.Tangent);
+            context.AddBlock(HDBlockFields.SurfaceDescription.IrisNormalWS, eyeData.irisNormal && lightingData.normalDropOffSpace == NormalDropOffSpace.World);
 
             context.AddBlock(HDBlockFields.SurfaceDescription.IOR);
             context.AddBlock(HDBlockFields.SurfaceDescription.Mask);
-            context.AddBlock(HDBlockFields.SurfaceDescription.DiffusionProfileHash,     eyeData.subsurfaceScattering);
-            context.AddBlock(HDBlockFields.SurfaceDescription.SubsurfaceMask,           eyeData.subsurfaceScattering);
+            context.AddBlock(HDBlockFields.SurfaceDescription.DiffusionProfileHash, eyeData.subsurfaceScattering);
+            context.AddBlock(HDBlockFields.SurfaceDescription.SubsurfaceMask, eyeData.subsurfaceScattering);
         }
 
         protected override void AddInspectorPropertyBlocks(SubTargetPropertiesGUI blockList)

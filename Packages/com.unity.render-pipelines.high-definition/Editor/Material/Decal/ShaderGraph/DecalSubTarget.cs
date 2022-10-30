@@ -21,12 +21,10 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
         static readonly GUID kSubTargetSourceCodeGuid = new GUID("3ec927dfcb5d60e4883b2c224857b6c2");  // DecalSubTarget.cs
 
         protected override string templatePath => $"{HDUtils.GetHDRenderPipelinePath()}Editor/Material/Decal/ShaderGraph/DecalPass.template";
-        protected override string[] templateMaterialDirectories =>  new string[]
-        {
-            $"{HDUtils.GetHDRenderPipelinePath()}Editor/Material/ShaderGraph/Templates/"
-        };
+        protected override string[] templateMaterialDirectories => new string[] { };
         protected override GUID subTargetAssetGuid => kSubTargetSourceCodeGuid;
-        protected override string customInspector => "Rendering.HighDefinition.DecalGUI";
+        protected override string customInspector => "Rendering.HighDefinition.DecalShaderGraphGUI";
+        internal override MaterialResetter setupMaterialKeywordsAndPassFunc => DecalShaderGraphGUI.SetupDecalKeywordsAndPass;
         protected override string renderType => HDRenderTypeTags.Opaque.ToString();
         protected override string renderQueue => HDRenderQueue.GetShaderTagValue(HDRenderQueue.ChangeType(HDRenderQueue.RenderQueueType.Opaque, decalData.drawOrder, false, false));
         protected override ShaderID shaderID => HDShaderUtils.ShaderID.SG_Decal;
@@ -61,7 +59,7 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
 
             // Emissive pass only have the emission keyword
             if (!(pass.lightMode == DecalSystem.s_MaterialDecalPassNames[(int)DecalSystem.MaterialDecalPass.DecalProjectorForwardEmissive] ||
-                pass.lightMode == DecalSystem.s_MaterialDecalPassNames[(int)DecalSystem.MaterialDecalPass.DecalMeshForwardEmissive]))
+                  pass.lightMode == DecalSystem.s_MaterialDecalPassNames[(int)DecalSystem.MaterialDecalPass.DecalMeshForwardEmissive]))
             {
                 if (decalData.affectsAlbedo)
                     pass.keywords.Add(DecalDefines.Albedo);
@@ -78,27 +76,27 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
             }
         }
 
-        public static FieldDescriptor AffectsAlbedo =           new FieldDescriptor(kMaterial, "AffectsAlbedo", "");
-        public static FieldDescriptor AffectsNormal =           new FieldDescriptor(kMaterial, "AffectsNormal", "");
-        public static FieldDescriptor AffectsEmission =         new FieldDescriptor(kMaterial, "AffectsEmission", "");
-        public static FieldDescriptor AffectsMetal =            new FieldDescriptor(kMaterial, "AffectsMetal", "");
-        public static FieldDescriptor AffectsAO =               new FieldDescriptor(kMaterial, "AffectsAO", "");
-        public static FieldDescriptor AffectsSmoothness =       new FieldDescriptor(kMaterial, "AffectsSmoothness", "");
-        public static FieldDescriptor AffectsMaskMap =          new FieldDescriptor(kMaterial, "AffectsMaskMap", "");
-        public static FieldDescriptor DecalDefault =            new FieldDescriptor(kMaterial, "DecalDefault", "");
+        public static FieldDescriptor AffectsAlbedo = new FieldDescriptor(kMaterial, "AffectsAlbedo", "");
+        public static FieldDescriptor AffectsNormal = new FieldDescriptor(kMaterial, "AffectsNormal", "");
+        public static FieldDescriptor AffectsEmission = new FieldDescriptor(kMaterial, "AffectsEmission", "");
+        public static FieldDescriptor AffectsMetal = new FieldDescriptor(kMaterial, "AffectsMetal", "");
+        public static FieldDescriptor AffectsAO = new FieldDescriptor(kMaterial, "AffectsAO", "");
+        public static FieldDescriptor AffectsSmoothness = new FieldDescriptor(kMaterial, "AffectsSmoothness", "");
+        public static FieldDescriptor AffectsMaskMap = new FieldDescriptor(kMaterial, "AffectsMaskMap", "");
+        public static FieldDescriptor DecalDefault = new FieldDescriptor(kMaterial, "DecalDefault", "");
 
         public override void GetFields(ref TargetFieldContext context)
         {
             // Decal properties
-            context.AddField(AffectsAlbedo,        decalData.affectsAlbedo);
-            context.AddField(AffectsNormal,        decalData.affectsNormal);
-            context.AddField(AffectsEmission,      decalData.affectsEmission);
-            context.AddField(AffectsMetal,         decalData.affectsMetal);
-            context.AddField(AffectsAO,            decalData.affectsAO);
-            context.AddField(AffectsSmoothness,    decalData.affectsSmoothness);
-            context.AddField(AffectsMaskMap,       decalData.affectsMaskmap);
-            context.AddField(DecalDefault,         decalData.affectsAlbedo || decalData.affectsNormal || decalData.affectsMetal ||
-                                                                    decalData.affectsAO || decalData.affectsSmoothness );
+            context.AddField(AffectsAlbedo, decalData.affectsAlbedo);
+            context.AddField(AffectsNormal, decalData.affectsNormal);
+            context.AddField(AffectsEmission, decalData.affectsEmission);
+            context.AddField(AffectsMetal, decalData.affectsMetal);
+            context.AddField(AffectsAO, decalData.affectsAO);
+            context.AddField(AffectsSmoothness, decalData.affectsSmoothness);
+            context.AddField(AffectsMaskMap, decalData.affectsMaskmap);
+            context.AddField(DecalDefault, decalData.affectsAlbedo || decalData.affectsNormal || decalData.affectsMetal ||
+                decalData.affectsAO || decalData.affectsSmoothness);
             context.AddField(Fields.LodCrossFade, decalData.supportLodCrossFade);
         }
 
@@ -142,7 +140,7 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 floatType = FloatType.Enum,
                 value = (int)DecalMeshDepthBiasType.DepthBias,
                 enumNames = { "Depth Bias", "View Bias" },
-                enumValues = { (int)DecalMeshDepthBiasType.DepthBias, (int)DecalMeshDepthBiasType.ViewBias},
+                enumValues = { (int)DecalMeshDepthBiasType.DepthBias, (int)DecalMeshDepthBiasType.ViewBias },
                 hidden = true
             });
 
@@ -187,7 +185,8 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
 
             void AddAffectsProperty(string referenceName)
             {
-                collector.AddShaderProperty(new BooleanShaderProperty{
+                collector.AddShaderProperty(new BooleanShaderProperty
+                {
                     overrideReferenceName = referenceName,
                     hidden = true,
                     value = true,
@@ -206,7 +205,8 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
 
             void AddColorMaskProperty(string referenceName)
             {
-                collector.AddShaderProperty(new Vector1ShaderProperty{
+                collector.AddShaderProperty(new Vector1ShaderProperty
+                {
                     overrideReferenceName = referenceName,
                     floatType = FloatType.Integer,
                     hidden = true,
@@ -214,7 +214,7 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
             }
         }
 
-#region SubShaders
+        #region SubShaders
         static class SubShaders
         {
             // Relies on the order shader passes are declared in DecalSystem.cs
@@ -248,10 +248,12 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 useInPreview = false,
 
                 // Collections
+                structs = CoreStructCollections.Basic,
                 renderStates = DecalRenderStates.ScenePicking,
-                pragmas = DecalPragmas.Instanced,
+                pragmas = DecalPragmas.InstancedDecal,
                 defines = CoreDefines.ScenePicking,
                 includes = DecalIncludes.ScenePicking,
+                customInterpolators = CoreCustomInterpolators.Common,
             };
 
             public static PassDescriptor DBufferProjector = new PassDescriptor()
@@ -265,13 +267,12 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 // Port mask
                 validPixelBlocks = DecalBlockMasks.FragmentDefault,
 
-                //Fields
-                structs = CoreStructCollections.Default,
-                fieldDependencies = CoreFieldDependencies.Default,
+                structs = CoreStructCollections.Basic,
                 renderStates = DecalRenderStates.DBufferProjector,
-                pragmas = DecalPragmas.Instanced,
+                pragmas = DecalPragmas.InstancedDecal,
                 keywords = DecalDefines.Decals,
                 includes = DecalIncludes.Default,
+                customInterpolators = CoreCustomInterpolators.Common,
             };
 
             public static PassDescriptor DecalProjectorForwardEmissive = new PassDescriptor()
@@ -285,15 +286,13 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 // Port mask
                 validPixelBlocks = DecalBlockMasks.FragmentEmissive,
 
-                //Fields
-                structs = CoreStructCollections.Default,
-                fieldDependencies = CoreFieldDependencies.Default,
-
                 // Conditional State
+                structs = CoreStructCollections.Basic,
                 renderStates = DecalRenderStates.DecalProjectorForwardEmissive,
-                pragmas = DecalPragmas.Instanced,
+                pragmas = DecalPragmas.InstancedDecal,
                 defines = DecalDefines.Emission,
                 includes = DecalIncludes.Default,
+                customInterpolators = CoreCustomInterpolators.Common,
             };
 
             public static PassDescriptor DBufferMesh = new PassDescriptor()
@@ -308,15 +307,15 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 validPixelBlocks = DecalBlockMasks.FragmentDefault,
 
                 //Fields
-                structs = CoreStructCollections.Default,
                 requiredFields = DecalRequiredFields.Mesh,
-                fieldDependencies = CoreFieldDependencies.Default,
 
                 // Conditional State
+                structs = CoreStructCollections.Basic,
                 renderStates = DecalRenderStates.DBufferMesh,
-                pragmas = DecalPragmas.Instanced,
+                pragmas = DecalPragmas.InstancedDecal,
                 keywords = DecalDefines.Decals,
                 includes = DecalIncludes.Default,
+                customInterpolators = CoreCustomInterpolators.Common,
             };
 
             public static PassDescriptor DecalMeshForwardEmissive = new PassDescriptor()
@@ -331,15 +330,15 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 validPixelBlocks = DecalBlockMasks.FragmentMeshEmissive,
 
                 //Fields
-                structs = CoreStructCollections.Default,
                 requiredFields = DecalRequiredFields.Mesh,
-                fieldDependencies = CoreFieldDependencies.Default,
 
                 // Conditional State
+                structs = CoreStructCollections.Basic,
                 renderStates = DecalRenderStates.DecalMeshForwardEmissive,
-                pragmas = DecalPragmas.Instanced,
+                pragmas = DecalPragmas.InstancedDecal,
                 defines = DecalDefines.Emission,
                 includes = DecalIncludes.Default,
+                customInterpolators = CoreCustomInterpolators.Common,
             };
 
             public static PassDescriptor Preview = new PassDescriptor()
@@ -354,19 +353,19 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 validPixelBlocks = DecalBlockMasks.FragmentMeshEmissive,
 
                 //Fields
-                structs = CoreStructCollections.Default,
                 requiredFields = DecalRequiredFields.Mesh,
-                fieldDependencies = CoreFieldDependencies.Default,
 
                 // Render state overrides
+                structs = CoreStructCollections.Basic,
                 renderStates = DecalRenderStates.Preview,
-                pragmas = DecalPragmas.Instanced,
+                pragmas = DecalPragmas.InstancedDecal,
                 includes = DecalIncludes.Default,
+                customInterpolators = CoreCustomInterpolators.Common,
             };
         }
-#endregion
+        #endregion
 
-#region BlockMasks
+        #region BlockMasks
         static class DecalBlockMasks
         {
             public static BlockFieldDescriptor[] FragmentDefault = new BlockFieldDescriptor[]
@@ -399,9 +398,9 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 BlockFields.SurfaceDescription.Emission,
             };
         }
-#endregion
+        #endregion
 
-#region RequiredFields
+        #region RequiredFields
         static class DecalRequiredFields
         {
             public static FieldCollection Mesh = new FieldCollection()
@@ -414,9 +413,9 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 HDStructFields.FragInputs.texCoord0,
             };
         }
-#endregion
+        #endregion
 
-#region RenderStates
+        #region RenderStates
         static class DecalRenderStates
         {
             readonly static string s_DecalColorMask = "ColorMask [_DecalColorMask0]\n\tColorMask [_DecalColorMask1] 1\n\tColorMask [_DecalColorMask2] 2\n\tColorMask [_DecalColorMask3] 3";
@@ -479,15 +478,14 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 { RenderState.ZTest(ZTest.LEqual) },
             };
         }
-#endregion
+        #endregion
 
-#region Pragmas
+        #region Pragmas
         static class DecalPragmas
         {
-            public static PragmaCollection Instanced = new PragmaCollection
+            public static PragmaCollection InstancedDecal = new PragmaCollection
             {
                 { CorePragmas.Basic },
-                { Pragma.MultiCompileInstancing },
 #if ENABLE_HYBRID_RENDERER_V2
                 { Pragma.DOTSInstancing },
 #endif
@@ -556,11 +554,11 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
             public static KeywordCollection Maskmap = new KeywordCollection { { Descriptors.AffectsMaskmap, new FieldCondition(AffectsMaskMap, true) } };
             public static DefineCollection Emission = new DefineCollection { { Descriptors.AffectsEmission, 1 } };
 
-            public static KeywordCollection Decals = new KeywordCollection { { Descriptors.Decals } };
+            public static KeywordCollection Decals = new KeywordCollection { { Descriptors.Decals }, { CoreKeywordDescriptors.DecalSurfaceGradient } };
         }
-#endregion
+        #endregion
 
-#region Includes
+        #region Includes
         static class DecalIncludes
         {
             const string kPacking = "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl";
@@ -590,6 +588,6 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 { kPassDecal, IncludeLocation.Postgraph },
             };
         }
-#endregion
+        #endregion
     }
 }
