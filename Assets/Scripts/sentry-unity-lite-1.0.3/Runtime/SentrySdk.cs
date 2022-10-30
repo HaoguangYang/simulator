@@ -396,7 +396,7 @@ public class SentrySdk : MonoBehaviour
 #if UNITY_5
             www.isError
 #else
-            www.isNetworkError || www.isHttpError
+            (www.result == UnityWebRequest.Result.ConnectionError) || (www.result == UnityWebRequest.Result.ProtocolError)
 #endif
              || www.responseCode != 200)
         {
