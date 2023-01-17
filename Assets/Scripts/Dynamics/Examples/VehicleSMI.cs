@@ -469,10 +469,13 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
                 {
                     axle.Left.motorTorque = torquePerWheel;
                     axle.Right.motorTorque = torquePerWheel;
+                } else {
+                    axle.Left.motorTorque = 0f;
+                    axle.Right.motorTorque = 0f;
                 }
 
-                axle.Left.brakeTorque = 0f;
-                axle.Right.brakeTorque = 0f;
+                //axle.Left.brakeTorque = 0f;
+                //axle.Right.brakeTorque = 0f;
             }
         }
         // TODO: to get brake + accelerator working at the same time, modify this area.
@@ -488,8 +491,8 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
                 var brakeTorque = MaxBrakeTorque * BrakeInput * axle.BrakeBias;
                 axle.Left.brakeTorque = brakeTorque;
                 axle.Right.brakeTorque = brakeTorque;
-                axle.Left.motorTorque = 0f;
-                axle.Right.motorTorque = 0f;
+                //axle.Left.motorTorque = 0f;
+                //axle.Right.motorTorque = 0f;
             }
         }
     }
