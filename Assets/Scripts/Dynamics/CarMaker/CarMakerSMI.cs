@@ -19,7 +19,7 @@ namespace Simulator.Sensors
     {
         public Vector3[] UpVector;
         public float[] ZValue;
-        public float SteerInput, AccellInput, BrakeInput;
+        public float SteerInput, AccellInput;
     }
 
     public class CarMakerSMI : MonoBehaviour, IVehicleDynamics
@@ -88,7 +88,7 @@ namespace Simulator.Sensors
             Vector3[] aUpVector = {AgentTires[0].transform.up, AgentTires[1].transform.up, AgentTires[2].transform.up, AgentTires[3].transform.up};
             float[] aZValue = {AgentTires[0].transform.position.y, AgentTires[1].transform.position.y, AgentTires[2].transform.position.y, AgentTires[3].transform.position.y};
 
-            CarMakerDynamicsEvent?.Invoke(this, new CarMakerDynamicsSensorEventArgs() { UpVector = aUpVector, ZValue = aZValue, SteerInput = SteerInput, AccellInput = AccellInput, BrakeInput = BrakeInput });
+            CarMakerDynamicsEvent?.Invoke(this, new CarMakerDynamicsSensorEventArgs() { UpVector = aUpVector, ZValue = aZValue, SteerInput = SteerInput, AccellInput = AccellInput - BrakeInput });
         }
 
         public void SetVehiclePose(Vector3 aPos, float aHeading, float aRoll, float aPitch, float aSpeed)
