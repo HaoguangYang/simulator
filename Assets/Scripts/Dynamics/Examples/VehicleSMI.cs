@@ -28,6 +28,9 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
     public float CurrentRPM { get; set; } = 0f;
     public float CurrentGear { get; set; } = 1f;
     public bool Reverse { get; set; } = false;
+
+    public bool EmergencyStopped { get; set; } = false;
+
     public float WheelAngle
     {
         get
@@ -162,7 +165,13 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
 
     public void FixedUpdate()
     {
-        GetInput();
+        if (EmergencyStopped)
+        {
+            HandBrake = true;
+            CurrentIgnitionStatus = IgnitionStatus.Off;
+        } else {
+            GetInput();
+        }
         RB.AddForce(-AirDragCoeff * RB.velocity * RB.velocity.magnitude); //air drag (quadratic)
         RB.AddForce(-AirDownForceCoeff * RB.velocity.sqrMagnitude * transform.up); //downforce (quadratic)
         RB.AddForceAtPosition(-TireDragCoeff * RB.velocity, transform.position); //tire drag (Linear)
@@ -264,6 +273,16 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
         return true;
     }
 
+    public void StartEngine()
+    {
+        CurrentIgnitionStatus = IgnitionStatus.On;
+    }
+
+    public void StopEngine()
+    {
+        CurrentIgnitionStatus = IgnitionStatus.Off;
+    }
+
     public bool ToggleHandBrake()
     {
         HandBrake = !HandBrake;
@@ -296,6 +315,20 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
             axle.Right.motorTorque = 0f;
         }
         return true;
+    }
+
+    public float GetWheelAngularVelocity(int wheelIndex)
+    {
+        int whichAxle = wheelIndex/2;
+        bool isLeft = wheelIndex%2 == 0;
+        const float rpmToRadps = (float)(System.Math.PI * 2.0 / 60.0);
+
+        if (isLeft)
+        {
+            return Axles[whichAxle].Left.rpm * rpmToRadps;
+        } else {
+            return Axles[whichAxle].Right.rpm * rpmToRadps;
+        }
     }
 
     private void UpdateWheelVisuals()

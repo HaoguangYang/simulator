@@ -41,7 +41,7 @@ public class VehicleVPP : MonoBehaviour, IVehicleDynamics
     public float CurrentGear { get; set; } = 1f;
     public bool Reverse { get; set; } = false;
 
-    public bool PurpleFlag { get; set;} = false;
+    public bool EmergencyStopped { get; set;} = false;
 
     public List<VPAxleInfo> Axles = new List<VPAxleInfo>();
 
@@ -115,7 +115,7 @@ public class VehicleVPP : MonoBehaviour, IVehicleDynamics
 
         VehicleVPPControllerInput.SetHandBrake(HandBrake);
 
-        if (!PurpleFlag)
+        if (!EmergencyStopped)
         {
             VehicleVPPControllerInput.SetSteer(SteerInput);
             VehicleVPPControllerInput.SetAccel(AccellInput);
