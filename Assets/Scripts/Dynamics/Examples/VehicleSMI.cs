@@ -53,7 +53,7 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
             return 0f;
         }
     }
-    public IgnitionStatus CurrentIgnitionStatus { get; set; } = IgnitionStatus.On;
+    public IgnitionStatus CurrentIgnitionStatus { get; set; } = IgnitionStatus.Off;
 
     public List<AxleInfo> Axles;
     public Vector3 CenterOfMass = new Vector3(0f, 0.35f, 0f);
