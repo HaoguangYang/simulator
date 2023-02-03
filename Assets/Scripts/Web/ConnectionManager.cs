@@ -381,6 +381,8 @@ public class CloudAPI
     Uri ProxyURL;
     string SimId;
 
+    static bool onlineStatus = false;
+
     private const uint fetchLimit = 50;
     Stream onlineStream;
 
@@ -485,10 +487,12 @@ public class CloudAPI
         {
             Console.WriteLine("[CONN] Failed to connect to WISE");
             var content = await response.Content.ReadAsStringAsync();
+            onlineStatus = false;
             throw new NoSuccessException($"{content} ({(int)response.StatusCode})", response.StatusCode);
         }
         Console.WriteLine("[CONN] Connected to WISE.");
         Debug.Log("connected");
+        onlineStatus = true;
         onlineStream = await response.Content.ReadAsStreamAsync();
         return onlineStream;
     }
@@ -517,6 +521,7 @@ public class CloudAPI
         }
 
         onlineStream.Close();
+        onlineStatus = false;
         throw new Exception("Connection Closed");
     }
 
@@ -576,6 +581,18 @@ public class CloudAPI
 
     public async Task<ApiModelType> GetApi<ApiModelType>(string routeAndParams)
     {
+        if (!onlineStatus){
+            //Try from local
+            string jsonFile = $"./wise/{routeAndParams}";
+            jsonFile = jsonFile.Replace("?", "_").Replace("=", "-").Replace("&", "+");
+            if (File.Exists(jsonFile))
+            {
+                string jsonString = System.IO.File.ReadAllText(jsonFile);
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<ApiModelType>(jsonString);
+            }
+            throw new Exception($"File not found: {jsonFile}");
+        }
+
         HttpRequestMessage message = new HttpRequestMessage(HttpMethod.Get, new Uri(CloudURL, routeAndParams));
         if (!string.IsNullOrEmpty(SimId)) message.Headers.Add("SimId", SimId);
         message.Headers.Add("Accept", "application/json");
@@ -655,6 +672,7 @@ public class CloudAPI
 
     public void Disconnect()
     {
+        onlineStatus = false;
         Console.WriteLine("[CONN] Disconnecting");
         onlineStream?.Close();
         onlineStream?.Dispose();

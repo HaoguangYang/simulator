@@ -23,7 +23,7 @@ namespace Simulator.Database.Services
                 {
                     settings = new ClientSettings();
                     settings.simid = Guid.NewGuid().ToString();
-                    settings.onlineStatus = true;
+                    settings.onlineStatus = false;
                     db.Insert(settings);
                 }
 
@@ -41,7 +41,7 @@ namespace Simulator.Database.Services
                 {
                     settings = new ClientSettings();
                     settings.simid = simid;
-                    settings.onlineStatus = true;
+                    settings.onlineStatus = false;
                     db.Insert(settings);
                 }
                 else

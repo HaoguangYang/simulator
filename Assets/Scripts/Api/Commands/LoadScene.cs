@@ -14,6 +14,8 @@ using UnityEngine.SceneManagement;
 using SimpleJSON;
 using ICSharpCode.SharpZipLib.Zip;
 using System.Threading.Tasks;
+using Simulator.Database;
+using Simulator.Database.Services;
 using Simulator.Web;
 
 namespace Simulator.Api.Commands
@@ -31,7 +33,21 @@ namespace Simulator.Api.Commands
         private async Task LoadMap(JSONNode args, string userMapId, int? seed = null)
         {
             var api = ApiManager.Instance;
-            MapDetailData mapData = await ConnectionManager.API.GetByIdOrName<MapDetailData>(userMapId);
+            var assetService = new AssetService();
+            MapDetailData mapData;
+            var found = (AssetModel)null;
+            if (!Guid.TryParse(userMapId, out Guid guid)){
+                found = assetService.GetByName(userMapId, "Environment");
+            } else {
+                found = assetService.Get(userMapId);
+            }
+            if (found == null || ConnectionManager.Status==ConnectionManager.ConnectionStatus.Online){
+                mapData = await ConnectionManager.API.GetByIdOrName<MapDetailData>(userMapId);
+            } else {
+                mapData = new MapDetailData();
+                mapData.AssetGuid = found.AssetGuid;
+                mapData.Name = found.Name;
+            }
             var ret = await DownloadManager.GetAsset(BundleConfig.BundleTypes.Environment, mapData.AssetGuid, mapData.Name);
             api.StartCoroutine(LoadMapAssets(this, mapData, ret.LocalPath, userMapId, seed));
         }

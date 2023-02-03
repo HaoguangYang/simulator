@@ -134,8 +134,7 @@ public class UIManager : MonoBehaviour
     public Text FPSText;
     private TimeSpan CurrentTimeSpan;
     private float ElapsedFPSTime = 1f;
-    private float DeltaTime = 0.0f;
-    private float FPS = 0f;
+    private int FramesElapsed = 0;
 
     private StringBuilder sb = new StringBuilder();
     private GameObject CurrentAgent;
@@ -904,19 +903,16 @@ public class UIManager : MonoBehaviour
 
     private void UpdateFPS()
     {
-        if (FPSText == null)
-            return;
+        FramesElapsed ++;
 
-        DeltaTime += (Time.unscaledDeltaTime - DeltaTime) * 0.1f;
-        FPS = 1.0f / DeltaTime;
-
-        if (ElapsedFPSTime >= 1)
+        if (ElapsedFPSTime >= 1f)
         {
-            if (FPS < 15)
+            float FPS = FramesElapsed/ElapsedFPSTime;
+            if (FPS < 15.0f)
             {
                 FPSText.color = Color.red;
             }
-            else if (FPS < 30)
+            else if (FPS < 30.0f)
             {
                 FPSText.color = Color.yellow;
             }
@@ -924,8 +920,9 @@ public class UIManager : MonoBehaviour
             {
                 FPSText.color = Color.green;
             }
-            FPSText.text = FPS.ToString("F2");
+            FPSText.text = FPS.ToString("F1");
             ElapsedFPSTime = 0f;
+            FramesElapsed = 0;
         }
         else
         {
@@ -935,19 +932,7 @@ public class UIManager : MonoBehaviour
 
     private void UpdateSimTime()
     {
-        if (SimTimeText == null)
-            return;
-
         CurrentTimeSpan = SimulatorManager.Instance.GetSessionElapsedTimeSpan();
-        if (FPSText != null)
-        {
-            SimTimeText.text = string.Format("{4,3} {0:00}:{1:00}:{2:00}:{3:00}", CurrentTimeSpan.Hours, CurrentTimeSpan.Minutes, CurrentTimeSpan.Seconds, CurrentTimeSpan.Milliseconds / 10, FPSText.text);
-        }
-
-        else
-        {
-            SimTimeText.text = string.Format("{0:00}:{1:00}:{2:00}:{3:00}", CurrentTimeSpan.Hours, CurrentTimeSpan.Minutes, CurrentTimeSpan.Seconds, CurrentTimeSpan.Milliseconds / 10);
-        }
-
+        SimTimeText.text = string.Format("{4} FPS  {0:00}:{1:00}:{2:00}:{3:000}", CurrentTimeSpan.Hours, CurrentTimeSpan.Minutes, CurrentTimeSpan.Seconds, CurrentTimeSpan.Milliseconds, FPSText.text);
     }
 }

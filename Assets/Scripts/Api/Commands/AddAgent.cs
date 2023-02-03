@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 using System.Collections.Concurrent;
+using Simulator.Database.Services;
 
 namespace Simulator.Api.Commands
 {
@@ -75,8 +76,29 @@ namespace Simulator.Api.Commands
                     var agents = SimulatorManager.Instance.AgentManager;
                     GameObject agentGO = null;
 
-                    VehicleDetailData vehicleData = await ConnectionManager.API.GetByIdOrName<VehicleDetailData>(name);
-                    var config = new AgentConfig(vehicleData.ToVehicleData());
+                    SimulationService simService = new SimulationService();
+                    var vehicleData = (VehicleData)null;
+                    var simDataList = simService.List();
+                    // find locally by searching through simDataList
+                    foreach (var simData in simDataList){
+                        if (simData.Vehicles == null){
+                            continue;
+                        }
+                        foreach (var veh in simData.Vehicles){
+                            if (veh.Id == name || veh.Name == name){
+                                vehicleData = veh;
+                                break;
+                            }
+                        }
+                        if (vehicleData != null){
+                            break;
+                        }
+                    }
+                    if (vehicleData == null || ConnectionManager.Status==ConnectionManager.ConnectionStatus.Online){
+                        VehicleDetailData vehicleDetailData = await ConnectionManager.API.GetByIdOrName<VehicleDetailData>(name);
+                        vehicleData = vehicleDetailData.ToVehicleData();
+                    }
+                    var config = new AgentConfig(vehicleData);
                     config.Position = position;
                     config.Rotation = Quaternion.Euler(rotation);
 

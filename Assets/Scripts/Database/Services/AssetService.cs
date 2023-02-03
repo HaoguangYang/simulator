@@ -21,6 +21,20 @@ namespace Simulator.Database.Services
             }
         }
 
+        public AssetModel GetByName(string name, string type = null)
+        {
+            using (var db = DatabaseManager.Open())
+            {
+                var sql = (PetaPoco.Sql)null;
+                if (type == null){
+                    sql = Sql.Builder.Where("name = @0", name);
+                } else {
+                    sql = Sql.Builder.Where("name = @0 AND type = @1", name, type);
+                }
+                return db.SingleOrDefault<AssetModel>(sql);
+            }
+        }
+
         public void Add(AssetModel asset)
         {
             using (var db = DatabaseManager.Open())
