@@ -97,6 +97,8 @@ namespace Simulator.Api.Commands
                     if (vehicleData == null || ConnectionManager.Status==ConnectionManager.ConnectionStatus.Online){
                         VehicleDetailData vehicleDetailData = await ConnectionManager.API.GetByIdOrName<VehicleDetailData>(name);
                         vehicleData = vehicleDetailData.ToVehicleData();
+                    } else {
+                        vehicleData.Bridge.ConnectionString = null;
                     }
                     var config = new AgentConfig(vehicleData);
                     config.Position = position;

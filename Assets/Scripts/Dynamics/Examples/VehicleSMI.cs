@@ -261,6 +261,8 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
         RB = GetComponent<Rigidbody>();
         Controller = GetComponent<IAgentController>();
 
+        tryOverrideVariables();//set custom config
+
         RB.centerOfMass = CenterOfMass;
         NumberOfDrivingWheels = Axles.Where(a => a.Motor).Count() * 2;
         TractionControlAdjustedMaxTorque = MaxMotorTorque - (TractionControlAmount * MaxMotorTorque);
@@ -271,8 +273,6 @@ public class VehicleSMI : MonoBehaviour, IVehicleDynamics
             axle.Left.wheelDampingRate = WheelDamping;
             axle.Right.wheelDampingRate = WheelDamping;
         }
-
-        tryOverrideVariables();//set custom config
     }
 
     private void Update()
