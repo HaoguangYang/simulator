@@ -16,7 +16,7 @@ namespace UnityEngine.Rendering.HighDefinition
         {
             public RenderGraphContext context;
             public HDCamera camera;
-            public RenderTargetIdentifier[] gBuffer;
+            public TextureHandle[] gBuffer;
             public RTHandle depthBuffer;
             public RTHandle customPassColorBuffer;
             public RTHandle customPassDepthBuffer;
@@ -52,7 +52,7 @@ namespace UnityEngine.Rendering.HighDefinition
             }
         }
 
-        public ref FrameSettings GetDefaultCameraFrameSettings() { return ref m_Asset.GetDefaultCameraFrameSettings(); }
+        public ref FrameSettings GetDefaultCameraFrameSettings() { return ref ((HDRenderPipelineAsset)GraphicsSettings.renderPipelineAsset).activeCameraFrameSettings; }
 
         /// <summary>
         /// <para>
@@ -173,7 +173,7 @@ namespace UnityEngine.Rendering.HighDefinition
             OnRenderShadowMap?.Invoke(cmd, worldTexelSize);
         }
 
-        internal void InvokeGBufferRender(RenderGraphContext context, HDCamera camera, RenderTargetIdentifier[] gBuffer, RTHandle depthBuffer)
+        internal void InvokeGBufferRender(RenderGraphContext context, HDCamera camera, TextureHandle[] gBuffer, RTHandle depthBuffer)
         {
             if (OnRenderGBuffer == null)
                 return;

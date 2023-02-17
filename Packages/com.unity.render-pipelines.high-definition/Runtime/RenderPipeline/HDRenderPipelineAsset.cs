@@ -41,6 +41,19 @@ namespace UnityEngine.Rendering.HighDefinition
             OnValidate();
         }
 
+        // === LGSVL (Set active frame settings on pipeline creation)
+        /// <summary>
+        /// CreatePipeline implementation.
+        /// </summary>
+        /// <returns>A new HDRenderPipeline instance.</returns>
+        protected override RenderPipeline CreatePipeline()
+            => new HDRenderPipeline(this);
+        //{
+        //    globalSettings.m_RenderingActiveCameraFrameSettings = globalSettings.m_RenderingPathDefaultCameraFrameSettings;
+        //    return new HDRenderPipeline(this, HDRenderPipeline.defaultAsset);
+        //}
+        // ===
+
         /// <summary>
         /// OnValidate implementation.
         /// </summary>
@@ -63,11 +76,11 @@ namespace UnityEngine.Rendering.HighDefinition
         /// CreatePipeline implementation.
         /// </summary>
         /// <returns>A new HDRenderPipeline instance.</returns>
-        protected override RenderPipeline CreatePipeline()
-        {
-            globalSettings.m_RenderingActiveCameraFrameSettings = globalSettings.m_RenderingPathDefaultCameraFrameSettings;
-            return new HDRenderPipeline(this);
-        }
+        //protected override RenderPipeline CreatePipeline()
+        //{
+        //    globalSettings.m_RenderingActiveCameraFrameSettings = globalSettings.m_RenderingPathDefaultCameraFrameSettings;
+        //    return new HDRenderPipeline(this);
+        //}
 
         public ref FrameSettings GetDefaultCameraFrameSettings() { return ref
             globalSettings.m_RenderingActiveCameraFrameSettings;
@@ -148,6 +161,9 @@ namespace UnityEngine.Rendering.HighDefinition
         /// <summary>HDRP default shader.</summary>
         public override Shader defaultShader
             => globalSettings?.renderPipelineResources?.shaders.defaultPS;
+
+        public ref FrameSettings activeCameraFrameSettings
+            => ref globalSettings.GetDefaultFrameSettings(FrameSettingsRenderType.Camera);
 
         [SerializeField]
         internal VirtualTexturingSettingsSRP virtualTexturingSettings = new VirtualTexturingSettingsSRP();

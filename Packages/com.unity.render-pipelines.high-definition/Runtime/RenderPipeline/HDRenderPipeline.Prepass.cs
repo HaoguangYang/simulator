@@ -675,10 +675,8 @@ namespace UnityEngine.Rendering.HighDefinition
 
                 passData.dBuffer = ReadDBuffer(prepassOutput.dbuffer, builder);
 
-                // === LGSVL (Copy prepassOutput fields into local variables to be used in Lambda function)
-                TextureHandle[] gbufferRT_local = prepassOutput.gbuffer.mrt;
-                TextureHandle depthBuffer_local = prepassOutput.depthBuffer;
-                // ===
+                var rti = prepassOutput.gbuffer.mrt;
+                var depthBuffer = prepassOutput.depthBuffer;
 
                 builder.SetRenderFunc(
                     (GBufferPassData data, RenderGraphContext context) =>
@@ -697,12 +695,13 @@ namespace UnityEngine.Rendering.HighDefinition
                         DrawOpaqueRendererList(context, data.frameSettings, data.rendererList);
 
                         // === LGSVL (Invoke event for GBuffer render)
-                        var rti = context.renderGraphPool.GetTempArray<RenderTargetIdentifier>(gbufferRT_local.Length);
+                        //var rti = context.renderGraphPool.GetTempArray<RenderTargetIdentifier>(prepassOutput.gbuffer.mrt.Length);
 
-                        for (var i = 0; i < rti.Length; ++i)
-                            rti[i] = gbufferRT_local[i];
+                        //for (var i = 0; i < rti.Length; ++i)
+                        //    rti[i] = prepassOutput.gbuffer.mrt[i];
 
-                        ((HDRenderPipeline)RenderPipelineManager.currentPipeline).InvokeGBufferRender(context, hdCamera, rti, depthBuffer_local);
+                        // ???
+                        ((HDRenderPipeline)RenderPipelineManager.currentPipeline).InvokeGBufferRender(context, hdCamera, rti, depthBuffer);
                         // ===
                     });
             }

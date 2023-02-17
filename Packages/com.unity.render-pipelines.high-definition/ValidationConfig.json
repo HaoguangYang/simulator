@@ -13,6 +13,17 @@
 				[
 					"Pragma\\.OnlyRenderers.*Platform\\.PS5"
 				]
+			},
+			{
+				"Targets": "+XboxOne",
+				"Files":
+				[
+					"Documentation~/Building-For-Consoles.md"
+				],
+				"Patterns":
+				[
+					"com\\.unity\\.render-pipelines\\.xboxone"
+				]
 			}
 		]
 	}
