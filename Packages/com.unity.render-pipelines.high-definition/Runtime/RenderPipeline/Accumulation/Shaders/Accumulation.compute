@@ -4,11 +4,12 @@
 
 #pragma kernel KMain
 
-#pragma multi_compile _ INPUT_FROM_RADIANCE_TEXTURE
+#pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch
+#pragma multi_compile _ INPUT_FROM_FRAME_TEXTURE
 
 // Inputs
-#ifdef INPUT_FROM_RADIANCE_TEXTURE
-TEXTURE2D_X(_RadianceTexture);
+#ifdef INPUT_FROM_FRAME_TEXTURE
+TEXTURE2D_X(_FrameTexture);
 #endif
 
 float4      _AccumulationWeights;
@@ -29,8 +30,11 @@ void AddConvergenceCue(uint2 pixelCoord, uint sampleCount, inout float3 color)
     uint width = _ScreenSize.x;
     uint height = _ScreenSize.y;
 
-    // Change color only in a region corresponding to a progress bar, on the bottom 1% of the screen
-    if (pixelCoord.y < 4 && (float)pixelCoord.x / width <= (float)sampleCount / _AccumulationNumSamples)
+    // Define progress bar height as 0.5% of the resolution (and at least 4 pixels high)
+    uint barHeight = max(4, ceil(height * 0.005));
+
+    // Change color only in a region corresponding to a progress bar, at the bottom of the screen
+    if (pixelCoord.y < barHeight && (float)pixelCoord.x / width <= (float)sampleCount / _AccumulationNumSamples)
     {
         float lum = Luminance(color);
 
@@ -63,8 +67,8 @@ void KMain(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
     else
     {
-#ifdef INPUT_FROM_RADIANCE_TEXTURE
-        float4 color = _RadianceTexture[COORD_TEXTURE2D_X(dispatchThreadId.xy)];
+#ifdef INPUT_FROM_FRAME_TEXTURE
+        float4 color = _FrameTexture[COORD_TEXTURE2D_X(dispatchThreadId.xy)];
 #else
         float4 color = _CameraColorTextureRW[COORD_TEXTURE2D_X(dispatchThreadId.xy)];
 #endif

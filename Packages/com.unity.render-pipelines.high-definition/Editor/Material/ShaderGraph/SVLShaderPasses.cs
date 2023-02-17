@@ -30,7 +30,7 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 {
                     BlockFields.VertexDescription.Position
                 },
-                requiredFields = CoreRequiredFields.PositionRWS,
+                requiredFields = CoreRequiredFields.BasicSurfaceData,
                 pragmas = CorePragmas.Basic,
                 defines = new DefineCollection()
                 {
@@ -73,7 +73,7 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 {
                     BlockFields.VertexDescription.Position
                 },
-                requiredFields = CoreRequiredFields.PositionRWS,
+                requiredFields = CoreRequiredFields.BasicSurfaceData,
                 pragmas = CorePragmas.Basic,
                 defines = new DefineCollection(),
                 keywords = new KeywordCollection(),
@@ -106,7 +106,7 @@ namespace UnityEditor.Rendering.HighDefinition.ShaderGraph
                 {
                     BlockFields.VertexDescription.Position
                 },
-                requiredFields = CoreRequiredFields.PositionRWS,
+                requiredFields = CoreRequiredFields.BasicSurfaceData,
                 pragmas = CorePragmas.Basic,
                 defines = new DefineCollection(),
                 keywords = new KeywordCollection(),

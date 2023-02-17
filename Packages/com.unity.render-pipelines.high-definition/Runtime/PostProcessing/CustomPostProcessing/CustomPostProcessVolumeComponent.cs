@@ -1,4 +1,6 @@
 using UnityEngine.Rendering;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace UnityEngine.Rendering.HighDefinition
 {
@@ -8,6 +10,11 @@ namespace UnityEngine.Rendering.HighDefinition
     public abstract class CustomPostProcessVolumeComponent : VolumeComponent
     {
         bool m_IsInitialized = false;
+
+        internal string typeName;
+
+        // Keep track of all the instances alive of the custom post process component so we can release them when needed
+        internal static HashSet<CustomPostProcessVolumeComponent> instances = new HashSet<CustomPostProcessVolumeComponent>();
 
         /// <summary>
         /// Injection point of the custom post process in HDRP.
@@ -22,7 +29,7 @@ namespace UnityEngine.Rendering.HighDefinition
         /// <summary>
         /// Setup function, called once before render is called.
         /// </summary>
-        public virtual void Setup() {}
+        public virtual void Setup() { }
 
         /// <summary>
         /// Called every frame for each camera when the post process needs to be rendered.
@@ -36,7 +43,7 @@ namespace UnityEngine.Rendering.HighDefinition
         /// <summary>
         /// Cleanup function, called when the render pipeline is disposed.
         /// </summary>
-        public virtual void Cleanup() {}
+        public virtual void Cleanup() { }
 
         /// <summary>
         /// Unity calls this method when the object goes out of scope.
@@ -53,6 +60,7 @@ namespace UnityEngine.Rendering.HighDefinition
                 Cleanup();
 
             m_IsInitialized = false;
+            instances.Remove(this);
         }
 
         internal void SetupIfNeeded()
@@ -61,7 +69,16 @@ namespace UnityEngine.Rendering.HighDefinition
             {
                 Setup();
                 m_IsInitialized = true;
+                typeName = GetType().Name;
+                instances.Add(this);
             }
+        }
+
+        // If the HDRP asset is destroyed or changed, we reset the post process resources
+        internal static void CleanupAllCustomPostProcesses()
+        {
+            foreach (var instance in instances.ToList()) // Copy to remove elements safely
+                instance.CleanupInternal();
         }
     }
 }

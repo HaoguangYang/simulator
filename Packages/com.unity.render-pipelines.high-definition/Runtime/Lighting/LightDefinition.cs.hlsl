@@ -1,5 +1,5 @@
 //
-// This file was automatically generated. Please don't edit by hand. Execute Editor command [ Edit / Render Pipeline / Generate Shader Includes ] instead
+// This file was automatically generated. Please don't edit by hand. Execute Editor command [ Edit > Rendering > Generate Shader Includes ] instead
 //
 
 #ifndef LIGHTDEFINITION_CS_HLSL
@@ -159,6 +159,11 @@ struct EnvLightData
     float roughReflections;
     float distanceBasedRoughness;
     int envIndex;
+    float4 L0L1;
+    float4 L2_1;
+    float L2_2;
+    int normalizeWithAPV;
+    float2 padding;
 };
 
 

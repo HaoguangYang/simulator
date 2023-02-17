@@ -5,13 +5,13 @@ namespace UnityEngine.Rendering.HighDefinition
     // TODO remove every occurrence of ShadowSplitData in function parameters when we'll have scriptable culling
     static class HDShadowUtils
     {
-        public static readonly float k_MinShadowNearPlane = 0.0001f;
+        public static readonly float k_MinShadowNearPlane = 0.01f;
         public static readonly float k_MaxShadowNearPlane = 10.0f;
 
         public static float Asfloat(uint val) { unsafe { return *((float*)&val); } }
-        public static float Asfloat(int val)  { unsafe { return *((float*)&val); } }
-        public static int Asint(float val)    { unsafe { return *((int*)&val); } }
-        public static uint Asuint(float val)  { unsafe { return *((uint*)&val); } }
+        public static float Asfloat(int val) { unsafe { return *((float*)&val); } }
+        public static int Asint(float val) { unsafe { return *((int*)&val); } }
+        public static uint Asuint(float val) { unsafe { return *((uint*)&val); } }
 
         static Plane[] s_CachedPlanes = new Plane[6];
 
@@ -64,7 +64,7 @@ namespace UnityEngine.Rendering.HighDefinition
         public static void ExtractDirectionalLightData(VisibleLight visibleLight, Vector2 viewportSize, uint cascadeIndex, int cascadeCount, float[] cascadeRatios, float nearPlaneOffset, CullingResults cullResults, int lightIndex,
             out Matrix4x4 view, out Matrix4x4 invViewProjection, out Matrix4x4 projection, out Matrix4x4 deviceProjection, out Matrix4x4 deviceProjectionYFlip, out ShadowSplitData splitData)
         {
-            Vector4     lightDir;
+            Vector4 lightDir;
 
             Debug.Assert((uint)viewportSize.x == (uint)viewportSize.y, "Currently the cascaded shadow mapping code requires square cascades.");
             splitData = new ShadowSplitData();
@@ -164,8 +164,8 @@ namespace UnityEngine.Rendering.HighDefinition
             invproj.m11 = 1.0f / proj.m11;
             invproj.m22 = 1.0f / proj.m22;
             invproj.m33 = 1.0f;
-            invproj.m03 =   proj.m03 * invproj.m00;
-            invproj.m13 =   proj.m13 * invproj.m11;
+            invproj.m03 = proj.m03 * invproj.m00;
+            invproj.m13 = proj.m13 * invproj.m11;
             invproj.m23 = -proj.m23 * invproj.m22;
 
             vpinv = invview * invproj;
@@ -233,7 +233,7 @@ namespace UnityEngine.Rendering.HighDefinition
                 mat.m11 = e;
             }
 
-            mat.m22 = -(f + n)/(f - n);
+            mat.m22 = -(f + n) / (f - n);
             mat.m23 = -2 * f * n / (f - n);
             mat.m32 = -1;
 
@@ -266,7 +266,7 @@ namespace UnityEngine.Rendering.HighDefinition
             deviceProj = GL.GetGPUProjectionMatrix(proj, false);
             deviceProjYFlip = GL.GetGPUProjectionMatrix(proj, true);
             InvertPerspective(ref deviceProj, ref view, out vpinverse);
-            return  CoreMatrixUtils.MultiplyPerspectiveMatrix(deviceProj, view);
+            return CoreMatrixUtils.MultiplyPerspectiveMatrix(deviceProj, view);
         }
 
         static Matrix4x4 ExtractPointLightMatrix(VisibleLight vl, uint faceIdx, float nearPlane, float guardAngle, out Matrix4x4 view, out Matrix4x4 proj, out Matrix4x4 deviceProj, out Matrix4x4 deviceProjYFlip, out Matrix4x4 vpinverse, out Vector4 lightDir, out ShadowSplitData splitData)
@@ -310,13 +310,13 @@ namespace UnityEngine.Rendering.HighDefinition
 
         static float CalcGuardAnglePerspective(float angleInDeg, float resolution, float filterWidth, float normalBiasMax, float guardAngleMaxInDeg)
         {
-            float angleInRad  = angleInDeg * 0.5f * Mathf.Deg2Rad;
-            float res         = 2.0f / resolution;
-            float texelSize   = Mathf.Cos(angleInRad) * res;
-            float beta        = normalBiasMax * texelSize * 1.4142135623730950488016887242097f;
-            float guardAngle  = Mathf.Atan(beta);
-            texelSize   = Mathf.Tan(angleInRad + guardAngle) * res;
-            guardAngle  = Mathf.Atan((resolution + Mathf.Ceil(filterWidth)) * texelSize * 0.5f) * 2.0f * Mathf.Rad2Deg - angleInDeg;
+            float angleInRad = angleInDeg * 0.5f * Mathf.Deg2Rad;
+            float res = 2.0f / resolution;
+            float texelSize = Mathf.Cos(angleInRad) * res;
+            float beta = normalBiasMax * texelSize * 1.4142135623730950488016887242097f;
+            float guardAngle = Mathf.Atan(beta);
+            texelSize = Mathf.Tan(angleInRad + guardAngle) * res;
+            guardAngle = Mathf.Atan((resolution + Mathf.Ceil(filterWidth)) * texelSize * 0.5f) * 2.0f * Mathf.Rad2Deg - angleInDeg;
             guardAngle *= 2.0f;
 
             return guardAngle < guardAngleMaxInDeg ? guardAngle : guardAngleMaxInDeg;

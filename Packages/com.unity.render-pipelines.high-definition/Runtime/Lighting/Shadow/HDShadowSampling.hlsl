@@ -313,13 +313,13 @@ float SampleShadow_PCSS(float3 tcs, float2 posSS, float2 scale, float2 offset, f
 
     // We scale the softness also based on the distance between the occluder if we assume that the light is a sphere source.
     // Also, we don't bother if the blocker has not been found.
-    if (isPerspective && blockerFound)
+    if (isPerspective)
     {
         float dist = 1.0f / (zParams.z * averageBlockerDepth + zParams.w);
         dist = min(dist, 7.5);  // We need to clamp the distance as the fitted curve will do strange things after this and because there is no point in scale further after this point.
         float dist2 = dist * dist;
         float dist4 = dist2 * dist2;
-        // Fitted curve to match ray trace reference as good as possible. 
+        // Fitted curve to match ray trace reference as good as possible.
         float distScale = 3.298300241 - 2.001364639  * dist + 0.4967311427 * dist2 - 0.05464058455 * dist * dist2 + 0.0021974 * dist2 * dist2;
         shadowSoftness *= distScale;
 
@@ -330,12 +330,12 @@ float SampleShadow_PCSS(float3 tcs, float2 posSS, float2 scale, float2 offset, f
     //2) Penumbra Estimation
     float filterSize = shadowSoftness * (isPerspective ? PenumbraSizePunctual(tcs.z, averageBlockerDepth) :
                                                          PenumbraSizeDirectional(tcs.z, averageBlockerDepth, zParams.x));
-    filterSize = max(filterSize, minFilterRadius);
+    filterSize = blockerFound ? max(filterSize, minFilterRadius) : minFilterRadius;
     filterSize *= atlasResFactor;
 
     //3) Filter
     // Note: we can't early out of the function if blockers are not found since Vulkan triggers a warning otherwise. Hence, we check for blockerFound here.
-    return blockerFound ? PCSS(tcs, filterSize, scale, offset, sampleJitter, tex, compSamp, filterSampleCount) : 1.0f;
+    return PCSS(tcs, filterSize, scale, offset, sampleJitter, tex, compSamp, filterSampleCount);
 }
 
 // Note this is currently not available as an option, but is left here to show what needs including if IMS is to be used.

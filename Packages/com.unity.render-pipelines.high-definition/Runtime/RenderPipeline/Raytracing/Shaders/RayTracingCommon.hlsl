@@ -1,5 +1,8 @@
 #ifndef RAY_TRACING_COMMON_HLSL
 #define RAY_TRACING_COMMON_HLSL
+
+#include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/Raytracing/Shaders/RaytracingSampling.hlsl"
+
 // This array converts an index to the local coordinate shift of the half resolution texture
 static const uint2 HalfResIndexToCoordinateShift[4] = { uint2(0,0), uint2(1, 0), uint2(0, 1), uint2(1, 1) };
 
@@ -53,6 +56,37 @@ struct StandardBSDFData
 uint2 ComputeSourceCoordinates(uint2 halfResCoord, int frameIndex)
 {
     return halfResCoord * 2;
+}
+
+// These need to be negative for RayDistanceIndicatesHitSkyOrUnlit
+#define RAY_TRACING_DISTANCE_FLAG_UNLIT -1.0
+#define RAY_TRACING_DISTANCE_FLAG_SKY 0.0
+
+bool RayTracingGBufferIsUnlit(float rayDistance)
+{
+    return rayDistance < 0.0;
+}
+
+bool RayTracingGBufferIsSky(float rayDistance)
+{
+    return rayDistance == RAY_TRACING_DISTANCE_FLAG_SKY;
+}
+
+bool RayTracingGBufferIsLit(float rayDistance)
+{
+    return rayDistance > 0.0;
+}
+
+float3 RayTracingHSVClamp(float3 color, float clampValue)
+{
+    // Convert to HSV space
+    float3 hsvColor = RgbToHsv(color);
+
+    // Expose and clamp the final color
+    hsvColor.z = clamp(hsvColor.z, 0.0, clampValue);
+
+    // Convert back to HSV space
+    return HsvToRgb(hsvColor);
 }
 
 #endif // RAY_TRACING_COMMON_HLSL

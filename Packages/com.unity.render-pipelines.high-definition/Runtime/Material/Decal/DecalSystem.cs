@@ -1,12 +1,16 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine.Assertions;
 using UnityEngine.Experimental.Rendering;
+using UnityEngine.Jobs;
 
 namespace UnityEngine.Rendering.HighDefinition
 {
     /// <summary>Decal Layers.</summary>
+    [Flags]
     public enum DecalLayerEnum
     {
         /// <summary>The light will no affect any object.</summary>
@@ -31,7 +35,7 @@ namespace UnityEngine.Rendering.HighDefinition
         Everything = 0xFF, // Custom name for "Everything" option
     }
 
-    class DecalSystem
+    partial class DecalSystem
     {
         // Relies on the order shader passes are declared in Decal.shader and DecalSubTarget.cs
         // Caution: Enum num must match pass name for s_MaterialDecalPassNames array
@@ -122,7 +126,6 @@ namespace UnityEngine.Rendering.HighDefinition
         {
             public class Set : IDisposable
             {
-                int m_NumRequest;
                 CullingGroup m_CullingGroup;
 
                 public CullingGroup cullingGroup => m_CullingGroup;
@@ -137,17 +140,14 @@ namespace UnityEngine.Rendering.HighDefinition
 
                 public void Clear()
                 {
-                    m_NumRequest = 0;
                     if (m_CullingGroup != null)
                         CullingGroupManager.instance.Free(m_CullingGroup);
                     m_CullingGroup = null;
                 }
 
-                public void Initialize(int numRequests, CullingGroup cullingGroup)
+                public void Initialize(CullingGroup cullingGroup)
                 {
                     Assert.IsNull(m_CullingGroup);
-
-                    m_NumRequest = numRequests;
                     m_CullingGroup = cullingGroup;
                 }
             }
@@ -374,7 +374,7 @@ namespace UnityEngine.Rendering.HighDefinition
             return false;
         }
 
-        private class DecalSet
+        private partial class DecalSet : IDisposable
         {
             public void InitializeMaterialValues()
             {
@@ -439,54 +439,44 @@ namespace UnityEngine.Rendering.HighDefinition
                 }
             }
 
+            public void Dispose() => Dispose(true);
+
+            void Dispose(bool disposing)
+            {
+                if (!disposing)
+                    return;
+
+                DisposeJobArrays();
+            }
+
             public DecalSet(Material material)
             {
                 m_Material = material;
                 InitializeMaterialValues();
             }
 
-
-            private BoundingSphere GetDecalProjectBoundingSphere(Matrix4x4 decalToWorld)
+            public void UpdateCachedData(DecalHandle handle, DecalProjector decalProjector)
             {
-                Vector4 min = new Vector4();
-                Vector4 max = new Vector4();
-                min = decalToWorld * kMin;
-                max = decalToWorld * kMax;
-                BoundingSphere res = new BoundingSphere();
-                res.position = (max + min) / 2;
-                res.radius = ((Vector3)(max - min)).magnitude / 2;
-                return res;
-            }
+                DecalProjector.CachedDecalData data = decalProjector.GetCachedDecalData();
 
-            public void UpdateCachedData(DecalHandle handle, in DecalProjector.CachedDecalData data)
-            {
                 int index = handle.m_Index;
-                m_CachedDecalToWorld[index] = data.localToWorld * data.sizeOffset;
-                Matrix4x4 decalRotation = Matrix4x4.Rotate(data.rotation);
 
-                // z/y axis swap for normal to decal space, Unity is column major
-                float y0 = decalRotation.m01;
-                float y1 = decalRotation.m11;
-                float y2 = decalRotation.m21;
-                decalRotation.m01 = decalRotation.m02;
-                decalRotation.m11 = decalRotation.m12;
-                decalRotation.m21 = decalRotation.m22;
-                decalRotation.m02 = y0;
-                decalRotation.m12 = y1;
-                decalRotation.m22 = y2;
-
-                m_CachedNormalToWorld[index] = decalRotation;
                 // draw distance can't be more than global draw distance
                 m_CachedDrawDistances[index].x = data.drawDistance < instance.DrawDistance
                     ? data.drawDistance
                     : instance.DrawDistance;
                 m_CachedDrawDistances[index].y = data.fadeScale;
-                // In the shader to remap from cosine -1 to 1 to new range 0..1  (with 0 - 0 degree and 1 - 180 degree)
-                // we do 1.0 - (dot() * 0.5 + 0.5) => 0.5 * (1 - dot())
-                // we actually square that to get smoother result => x = (0.5 - 0.5 * dot())^2
-                // Do a remap in the shader. 1.0 - saturate((x - start) / (end - start))
-                // After simplification => saturate(a + b * dot() * (dot() - 2.0))
-                // a = 1.0 - (0.25 - start) / (end - start), y = - 0.25 / (end - start)
+                // In the shader to remap from cosine -1 to 1 to new range 0..1  (with 0 = 0 degree and 1 = 180 degree)
+                // Approximate acos with polynom: (-0.69 * x^2 - 0.87) * x + HALF_PI;
+                // Remap result to angle fade range => 1 - saturate((acos/PI - start)/(end - start))
+                // Merging both equations above give:
+                // saturate((a * x^2 + b) * x + c)
+                // a = 0.69 / (PI * (end - start))
+                // b = 0.87 / (PI * (end - start))
+                // c = 1 + (start - 0.5) / (end - start) = (end - 0.5) / (end - start)
+                // Note that b = 1.25 * a
+                // Final result: saturate((x * x + 1.25) * x * a + c) -> madd mul madd
+                // WARNING: this code is duplicate in VFXDecalHDRPOutput.cs and in URP
                 if (data.startAngleFade == 180.0f) // angle fade is disabled
                 {
                     m_CachedAngleFade[index].x = 0.0f;
@@ -496,9 +486,9 @@ namespace UnityEngine.Rendering.HighDefinition
                 {
                     float angleStart = data.startAngleFade / 180.0f;
                     float angleEnd = data.endAngleFade / 180.0f;
-                    var range = Mathf.Max(0.0001f, angleEnd - angleStart);
-                    m_CachedAngleFade[index].x = 1.0f - (0.25f - angleStart) / range;
-                    m_CachedAngleFade[index].y = - 0.25f / range;
+                    float range = Mathf.Max(0.0001f, angleEnd - angleStart);
+                    m_CachedAngleFade[index].x = 0.222222222f / range;
+                    m_CachedAngleFade[index].y = (angleEnd - 0.5f) / range;
                 }
                 m_CachedUVScaleBias[index] = data.uvScaleBias;
                 m_CachedAffectsTransparency[index] = data.affectsTransparency;
@@ -507,13 +497,15 @@ namespace UnityEngine.Rendering.HighDefinition
                 m_CachedFadeFactor[index] = data.fadeFactor;
                 m_CachedDecalLayerMask[index] = data.decalLayerMask;
 
-                m_BoundingSpheres[index] = GetDecalProjectBoundingSphere(m_CachedDecalToWorld[index]);
                 UpdateCachedDrawOrder();
+
+                UpdateJobArrays(index, decalProjector);
             }
 
             public void UpdateCachedDrawOrder()
             {
-                if (this.m_Material.HasProperty(HDShaderIDs._DrawOrder))
+                // Material can be null here if it was destroyed.
+                if (m_Material != null && this.m_Material.HasProperty(HDShaderIDs._DrawOrder))
                 {
                     m_CachedDrawOrder = this.m_Material.GetInt(HDShaderIDs._DrawOrder);
                 }
@@ -524,55 +516,31 @@ namespace UnityEngine.Rendering.HighDefinition
             }
 
             // Update memory allocation and assign decal handle, then update cached data
-            public DecalHandle AddDecal(int materialID, in DecalProjector.CachedDecalData data)
+            public DecalHandle AddDecal(int materialID, DecalProjector decalProjector)
             {
                 // increase array size if no space left
                 if (m_DecalsCount == m_Handles.Length)
                 {
-                    DecalHandle[] newHandles = new DecalHandle[m_DecalsCount + kDecalBlockSize];
-                    BoundingSphere[] newSpheres = new BoundingSphere[m_DecalsCount + kDecalBlockSize];
-                    Matrix4x4[] newCachedTransforms = new Matrix4x4[m_DecalsCount + kDecalBlockSize];
-                    Matrix4x4[] newCachedNormalToWorld = new Matrix4x4[m_DecalsCount + kDecalBlockSize];
-                    Vector2[] newCachedDrawDistances = new Vector2[m_DecalsCount + kDecalBlockSize];
-                    Vector2[] newCachedAngleFade = new Vector2[m_DecalsCount + kDecalBlockSize];
-                    Vector4[] newCachedUVScaleBias = new Vector4[m_DecalsCount + kDecalBlockSize];
-                    bool[] newCachedAffectsTransparency = new bool[m_DecalsCount + kDecalBlockSize];
-                    int[] newCachedLayerMask = new int[m_DecalsCount + kDecalBlockSize];
-                    ulong[] newCachedSceneLayerMask = new ulong[m_DecalsCount + kDecalBlockSize];
-                    var cachedDecalLayerMask = new DecalLayerEnum[m_DecalsCount + kDecalBlockSize];
-                    float[] newCachedFadeFactor = new float[m_DecalsCount + kDecalBlockSize];
-                    m_ResultIndices = new int[m_DecalsCount + kDecalBlockSize];
+                    int newCapacity = m_DecalsCount + kDecalBlockSize;
 
-                    m_Handles.CopyTo(newHandles, 0);
-                    m_BoundingSpheres.CopyTo(newSpheres, 0);
-                    m_CachedDecalToWorld.CopyTo(newCachedTransforms, 0);
-                    m_CachedNormalToWorld.CopyTo(newCachedNormalToWorld, 0);
-                    m_CachedDrawDistances.CopyTo(newCachedDrawDistances, 0);
-                    m_CachedAngleFade.CopyTo(newCachedAngleFade, 0);
-                    m_CachedUVScaleBias.CopyTo(newCachedUVScaleBias, 0);
-                    m_CachedAffectsTransparency.CopyTo(newCachedAffectsTransparency, 0);
-                    m_CachedLayerMask.CopyTo(newCachedLayerMask, 0);
-                    m_CachedSceneLayerMask.CopyTo(newCachedSceneLayerMask, 0);
-                    m_CachedDecalLayerMask.CopyTo(cachedDecalLayerMask, 0);
-                    m_CachedFadeFactor.CopyTo(newCachedFadeFactor, 0);
+                    m_ResultIndices = new int[newCapacity];
 
-                    m_Handles = newHandles;
-                    m_BoundingSpheres = newSpheres;
-                    m_CachedDecalToWorld = newCachedTransforms;
-                    m_CachedNormalToWorld = newCachedNormalToWorld;
-                    m_CachedDrawDistances = newCachedDrawDistances;
-                    m_CachedAngleFade = newCachedAngleFade;
-                    m_CachedUVScaleBias = newCachedUVScaleBias;
-                    m_CachedAffectsTransparency = newCachedAffectsTransparency;
-                    m_CachedLayerMask = newCachedLayerMask;
-                    m_CachedSceneLayerMask = newCachedSceneLayerMask;
-                    m_CachedDecalLayerMask = cachedDecalLayerMask;
-                    m_CachedFadeFactor = newCachedFadeFactor;
+                    ResizeJobArrays(newCapacity);
+
+                    ArrayExtensions.ResizeArray(ref m_Handles, newCapacity);
+                    ArrayExtensions.ResizeArray(ref m_CachedDrawDistances, newCapacity);
+                    ArrayExtensions.ResizeArray(ref m_CachedAngleFade, newCapacity);
+                    ArrayExtensions.ResizeArray(ref m_CachedUVScaleBias, newCapacity);
+                    ArrayExtensions.ResizeArray(ref m_CachedAffectsTransparency, newCapacity);
+                    ArrayExtensions.ResizeArray(ref m_CachedLayerMask, newCapacity);
+                    ArrayExtensions.ResizeArray(ref m_CachedSceneLayerMask, newCapacity);
+                    ArrayExtensions.ResizeArray(ref m_CachedDecalLayerMask, newCapacity);
+                    ArrayExtensions.ResizeArray(ref m_CachedFadeFactor, newCapacity);
                 }
 
                 DecalHandle decalHandle = new DecalHandle(m_DecalsCount, materialID);
                 m_Handles[m_DecalsCount] = decalHandle;
-                UpdateCachedData(decalHandle, data);
+                UpdateCachedData(decalHandle, decalProjector);
                 m_DecalsCount++;
                 return decalHandle;
             }
@@ -586,9 +554,7 @@ namespace UnityEngine.Rendering.HighDefinition
                 m_Handles[m_DecalsCount - 1] = null;
 
                 // update cached data
-                m_BoundingSpheres[removeAtIndex] = m_BoundingSpheres[m_DecalsCount - 1];
-                m_CachedDecalToWorld[removeAtIndex] = m_CachedDecalToWorld[m_DecalsCount - 1];
-                m_CachedNormalToWorld[removeAtIndex] = m_CachedNormalToWorld[m_DecalsCount - 1];
+                RemoveFromJobArrays(removeAtIndex);
                 m_CachedDrawDistances[removeAtIndex] = m_CachedDrawDistances[m_DecalsCount - 1];
                 m_CachedAngleFade[removeAtIndex] = m_CachedAngleFade[m_DecalsCount - 1];
                 m_CachedUVScaleBias[removeAtIndex] = m_CachedUVScaleBias[m_DecalsCount - 1];
@@ -611,6 +577,8 @@ namespace UnityEngine.Rendering.HighDefinition
                 if (cullRequest.cullingGroup != null)
                     Debug.LogError("Begin/EndCull() called out of sequence for decal projectors.");
 
+                ResolveUpdateJob();
+
                 // let the culling group code do some of the heavy lifting for global draw distance
                 m_BoundingDistances[0] = DecalSystem.instance.DrawDistance;
                 m_NumResults = 0;
@@ -618,10 +586,10 @@ namespace UnityEngine.Rendering.HighDefinition
                 cullingGroup.targetCamera = instance.CurrentCamera;
                 cullingGroup.SetDistanceReferencePoint(cullingGroup.targetCamera.transform.position);
                 cullingGroup.SetBoundingDistances(m_BoundingDistances);
-                cullingGroup.SetBoundingSpheres(m_BoundingSpheres);
+                cullingGroup.SetBoundingSpheres(m_CachedBoundingSpheres);
                 cullingGroup.SetBoundingSphereCount(m_DecalsCount);
 
-                cullRequest.Initialize(0, cullingGroup);
+                cullRequest.Initialize(cullingGroup);
             }
 
             public int QueryCullResults(CullRequest.Set cullRequest, CullResult.Set cullResult)
@@ -649,12 +617,12 @@ namespace UnityEngine.Rendering.HighDefinition
                 var influenceForwardVS = worldToView.MultiplyVector(influenceZ / influenceExtents.z);
                 var influencePositionVS = worldToView.MultiplyPoint(pos); // place the mesh pivot in the center
 
-                m_Bounds[m_DecalDatasCount].center   = influencePositionVS;
+                m_Bounds[m_DecalDatasCount].center = influencePositionVS;
                 m_Bounds[m_DecalDatasCount].boxAxisX = influenceRightVS * influenceExtents.x;
                 m_Bounds[m_DecalDatasCount].boxAxisY = influenceUpVS * influenceExtents.y;
                 m_Bounds[m_DecalDatasCount].boxAxisZ = influenceForwardVS * influenceExtents.z;
-                m_Bounds[m_DecalDatasCount].scaleXY  = 1.0f;
-                m_Bounds[m_DecalDatasCount].radius   = influenceExtents.magnitude;
+                m_Bounds[m_DecalDatasCount].scaleXY = 1.0f;
+                m_Bounds[m_DecalDatasCount].radius = influenceExtents.magnitude;
 
                 // The culling system culls pixels that are further
                 //   than a threshold to the box influence extents.
@@ -706,6 +674,9 @@ namespace UnityEngine.Rendering.HighDefinition
 
                 AssignCurrentBatches(ref decalToWorldBatch, ref normalToWorldBatch, ref decalLayerMaskBatch, batchCount);
 
+                NativeArray<Matrix4x4> cachedDecalToWorld = m_DecalToWorlds.Reinterpret<Matrix4x4>();
+                NativeArray<Matrix4x4> cachedNormalToWorld = m_NormalToWorlds.Reinterpret<Matrix4x4>();
+
                 Vector3 cameraPos = instance.CurrentCamera.transform.position;
                 var camera = instance.CurrentCamera;
                 Matrix4x4 worldToView = HDRenderPipeline.WorldToCamera(camera);
@@ -725,13 +696,13 @@ namespace UnityEngine.Rendering.HighDefinition
                     if ((cullingMask & decalMask) != 0 && sceneViewCullingMaskTest)
                     {
                         // do additional culling based on individual decal draw distances
-                        float distanceToDecal = (cameraPos - m_BoundingSpheres[decalIndex].position).magnitude;
-                        float cullDistance = m_CachedDrawDistances[decalIndex].x + m_BoundingSpheres[decalIndex].radius;
+                        float distanceToDecal = (cameraPos - m_CachedBoundingSpheres[decalIndex].position).magnitude;
+                        float cullDistance = m_CachedDrawDistances[decalIndex].x + m_CachedBoundingSpheres[decalIndex].radius;
                         if (distanceToDecal < cullDistance)
                         {
                             // d-buffer data
-                            decalToWorldBatch[instanceCount] = m_CachedDecalToWorld[decalIndex];
-                            normalToWorldBatch[instanceCount] = m_CachedNormalToWorld[decalIndex];
+                            decalToWorldBatch[instanceCount] = cachedDecalToWorld[decalIndex];
+                            normalToWorldBatch[instanceCount] = cachedNormalToWorld[decalIndex];
                             float fadeFactor = m_CachedFadeFactor[decalIndex] * Mathf.Clamp((cullDistance - distanceToDecal) / (cullDistance * (1.0f - m_CachedDrawDistances[decalIndex].y)), 0.0f, 1.0f);
                             // NormalToWorldBatchis a Matrix4x4x but is a Rotation matrix so bottom row and last column can be used for other data to save space
                             normalToWorldBatch[instanceCount].m03 = fadeFactor * m_Blend;
@@ -870,20 +841,25 @@ namespace UnityEngine.Rendering.HighDefinition
                 }
             }
 
+            public bool HasEmissivePass
+            {
+                get
+                {
+                    return m_cachedProjectorEmissivePassValue != -1;
+                }
+            }
+
             public int DrawOrder => m_CachedDrawOrder;
 
             private List<Matrix4x4[]> m_DecalToWorld = new List<Matrix4x4[]>();
             private List<Matrix4x4[]> m_NormalToWorld = new List<Matrix4x4[]>();
             private List<float[]> m_DecalLayerMasks = new List<float[]>();
 
-            private BoundingSphere[] m_BoundingSpheres = new BoundingSphere[kDecalBlockSize];
             private DecalHandle[] m_Handles = new DecalHandle[kDecalBlockSize];
             private int[] m_ResultIndices = new int[kDecalBlockSize];
             private int m_NumResults = 0;
             private int m_InstanceCount = 0;
             private int m_DecalsCount = 0;
-            private Matrix4x4[] m_CachedDecalToWorld = new Matrix4x4[kDecalBlockSize];
-            private Matrix4x4[] m_CachedNormalToWorld = new Matrix4x4[kDecalBlockSize];
             private int m_CachedDrawOrder = 0;
             private Vector2[] m_CachedDrawDistances = new Vector2[kDecalBlockSize]; // x - draw distance, y - fade scale
             private Vector2[] m_CachedAngleFade = new Vector2[kDecalBlockSize]; // x - scale fade, y - bias fade
@@ -898,7 +874,7 @@ namespace UnityEngine.Rendering.HighDefinition
             private float m_Blend = 0.0f;
             private Vector4 m_BaseColor;
             private Vector4 m_RemappingAOS;
-            private Vector4 m_ScalingBAndRemappingM; // mask map blue, metal remap
+            private Vector4 m_ScalingBAndRemappingM; // unused, mask map blue, metal remap min, metal remap max
             private Vector3 m_BlendParams;
 
             private bool m_IsHDRenderPipelineDecal;
@@ -921,13 +897,13 @@ namespace UnityEngine.Rendering.HighDefinition
             }
         }
 
-		void SetupMipStreamingSettings(Texture texture, bool allMips)
-		{
-			if (texture)
-			{
-				if (texture.dimension == UnityEngine.Rendering.TextureDimension.Tex2D)
-				{
-					Texture2D tex2D = (texture as Texture2D);
+        void SetupMipStreamingSettings(Texture texture, bool allMips)
+        {
+            if (texture)
+            {
+                if (texture.dimension == UnityEngine.Rendering.TextureDimension.Tex2D)
+                {
+                    Texture2D tex2D = (texture as Texture2D);
                     if (tex2D)
                     {
                         if (allMips)
@@ -935,9 +911,9 @@ namespace UnityEngine.Rendering.HighDefinition
                         else
                             tex2D.ClearRequestedMipmapLevel();
                     }
-				}
-			}
-		}
+                }
+            }
+        }
 
         void SetupMipStreamingSettings(Material material, bool allMips)
         {
@@ -953,8 +929,9 @@ namespace UnityEngine.Rendering.HighDefinition
         }
 
         // Add a decal material to the decal set
-        public DecalHandle AddDecal(Material material, DecalProjector.CachedDecalData data)
+        public DecalHandle AddDecal(DecalProjector decalProjector)
         {
+            var material = decalProjector.material;
             SetupMipStreamingSettings(material, true);
 
             DecalSet decalSet = null;
@@ -964,7 +941,7 @@ namespace UnityEngine.Rendering.HighDefinition
                 decalSet = new DecalSet(material);
                 m_DecalSets.Add(key, decalSet);
             }
-            return decalSet.AddDecal(key, data);
+            return decalSet.AddDecal(key, decalProjector);
         }
 
         public void RemoveDecal(DecalHandle handle)
@@ -981,12 +958,13 @@ namespace UnityEngine.Rendering.HighDefinition
                 {
                     SetupMipStreamingSettings(decalSet.KeyMaterial, false);
 
+                    decalSet.Dispose();
                     m_DecalSets.Remove(key);
                 }
             }
         }
 
-        public void UpdateCachedData(DecalHandle handle, DecalProjector.CachedDecalData data)
+        public void UpdateCachedData(DecalHandle handle, DecalProjector decalProjector)
         {
             if (!DecalHandle.IsValid(handle))
                 return;
@@ -995,7 +973,7 @@ namespace UnityEngine.Rendering.HighDefinition
             int key = handle.m_MaterialID;
             if (m_DecalSets.TryGetValue(key, out decalSet))
             {
-                decalSet.UpdateCachedData(handle, data);
+                decalSet.UpdateCachedData(handle, decalProjector);
             }
         }
 
@@ -1021,6 +999,16 @@ namespace UnityEngine.Rendering.HighDefinition
             m_DecalsVisibleThisFrame = QueryCullResults(cullRequest, cullResults);
             foreach (var pair in m_DecalSets)
                 pair.Value.EndCull(cullRequest[pair.Key]);
+        }
+
+        public bool HasAnyForwardEmissive()
+        {
+            foreach (var decalSet in m_DecalSetsRenderList)
+            {
+                if (decalSet.HasEmissivePass)
+                    return true;
+            }
+            return false;
         }
 
         public void RenderIntoDBuffer(CommandBuffer cmd)
@@ -1118,7 +1106,6 @@ namespace UnityEngine.Rendering.HighDefinition
             UpdateDecalDatasWithAtlasInfo();
         }
 
-
         public void CreateDrawData()
         {
             m_DecalDatasCount = 0;
@@ -1154,7 +1141,7 @@ namespace UnityEngine.Rendering.HighDefinition
 
             foreach (var decalSet in m_DecalSetsRenderList)
                 decalSet.CreateDrawData();
-            }
+        }
 
         public void Cleanup()
         {
@@ -1166,17 +1153,11 @@ namespace UnityEngine.Rendering.HighDefinition
             m_Atlas = null;
         }
 
-        public void RenderDebugOverlay(HDCamera hdCamera, CommandBuffer cmd, DebugDisplaySettings debugDisplaySettings, DebugOverlay debugOverlay)
+        public void RenderDebugOverlay(HDCamera hdCamera, CommandBuffer cmd, int mipLevel, DebugOverlay debugOverlay)
         {
-            if (debugDisplaySettings.data.decalsDebugSettings.displayAtlas)
-            {
-                using (new ProfilingScope(cmd, ProfilingSampler.Get(HDProfileId.DisplayDebugDecalsAtlas)))
-                {
-                    debugOverlay.SetViewport(cmd);
-                    HDUtils.BlitQuad(cmd, Atlas.AtlasTexture, new Vector4(1, 1, 0, 0), new Vector4(1, 1, 0, 0), (int)debugDisplaySettings.data.decalsDebugSettings.mipLevel, true);
-                    debugOverlay.Next();
-                }
-            }
+            debugOverlay.SetViewport(cmd);
+            HDUtils.BlitQuad(cmd, Atlas.AtlasTexture, new Vector4(1, 1, 0, 0), new Vector4(1, 1, 0, 0), mipLevel, true);
+            debugOverlay.Next();
         }
 
         public void LoadCullResults(CullResult cullResult)

@@ -1,7 +1,8 @@
-﻿Shader "Hidden/HDRP/MaterialError"
+Shader "Hidden/HDRP/MaterialError"
 {
     SubShader
     {
+        Tags{ "RenderPipeline" = "HDRenderPipeline" }
         Pass
         {
             HLSLPROGRAM
@@ -43,5 +44,6 @@
             ENDHLSL
         }
     }
-    Fallback Off
+
+    Fallback "Hidden/Core/FallbackError"
 }

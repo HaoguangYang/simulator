@@ -268,7 +268,7 @@ namespace Simulator.Editor.MapMeshes
             bool TryFindBestUnusedVertex(out KeyValuePair<Tuple<int, int>, bool> unusedVert)
             {
                 var found = false;
-                KeyValuePair<Tuple<int, int>, bool> firstKvp;
+                KeyValuePair<Tuple<int, int>, bool> firstKvp = new KeyValuePair<Tuple<int, int>, bool>();
 
                 foreach (var kvp in edgeDict)
                 {

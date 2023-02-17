@@ -16,7 +16,7 @@ namespace UnityEngine.Rendering.HighDefinition
         {
             public RenderGraphContext context;
             public HDCamera camera;
-            public RenderTargetIdentifier[] gBuffer;
+            public TextureHandle[] gBuffer;
             public RTHandle depthBuffer;
             public RTHandle customPassColorBuffer;
             public RTHandle customPassDepthBuffer;
@@ -52,7 +52,7 @@ namespace UnityEngine.Rendering.HighDefinition
             }
         }
 
-        public ref FrameSettings GetDefaultCameraFrameSettings() { return ref m_Asset.m_RenderingActiveCameraFrameSettings; }
+        public ref FrameSettings GetDefaultCameraFrameSettings() { return ref ((HDRenderPipelineAsset)GraphicsSettings.renderPipelineAsset).activeCameraFrameSettings; }
 
         /// <summary>
         /// <para>
@@ -79,7 +79,15 @@ namespace UnityEngine.Rendering.HighDefinition
         /// <summary>
         /// MSAA samples currently used by this render pipeline.
         /// </summary>
-        public MSAASamples MSAASamples => m_MSAASamples;
+        // public MSAASamples MSAASamples()
+        // {
+        //     HDRenderPipelineAsset hdrpAsset = GraphicsSettings.renderPipelineAsset as HDRenderPipelineAsset;
+        //     if (hdrpAsset != null)
+        //     {
+        //         return hdrpAsset.currentPlatformRenderPipelineSettings.m_MSAASamples;
+        //     }
+        //     return 0;
+        // }
 
         /// <summary>
         /// Marks current copy of depth buffer as invalid. Should be called after original depth buffer is modified.
@@ -98,10 +106,10 @@ namespace UnityEngine.Rendering.HighDefinition
         /// <param name="depthBuffer">Target depth buffer.</param>
         public void ForceRenderSky(HDCamera camera, CommandBuffer cmd, RTHandle colorBuffer, RTHandle depthBuffer)
         {
-            if (m_EnableRenderGraph)
-                m_SkyManager.RenderSky(camera, GetCurrentSunLight(), colorBuffer, depthBuffer, m_CurrentDebugDisplaySettings, cmd);
-            else
-                RenderSky(camera, cmd);
+            //if (m_EnableRenderGraph)
+            m_SkyManager.RenderSky(camera, m_CurrentSunLight, colorBuffer, depthBuffer, m_CurrentDebugDisplaySettings, cmd);
+            //else
+            //    RenderSky(camera, cmd);
         }
 
         /// <summary>
@@ -173,7 +181,7 @@ namespace UnityEngine.Rendering.HighDefinition
             OnRenderShadowMap?.Invoke(cmd, worldTexelSize);
         }
 
-        internal void InvokeGBufferRender(RenderGraphContext context, HDCamera camera, RenderTargetIdentifier[] gBuffer, RTHandle depthBuffer)
+        internal void InvokeGBufferRender(RenderGraphContext context, HDCamera camera, TextureHandle[] gBuffer, RTHandle depthBuffer)
         {
             if (OnRenderGBuffer == null)
                 return;

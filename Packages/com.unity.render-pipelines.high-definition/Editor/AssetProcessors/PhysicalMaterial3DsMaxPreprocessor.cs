@@ -11,8 +11,8 @@ namespace UnityEditor.Rendering.HighDefinition
 {
     class PhysicalMaterial3DsMaxPreprocessor : AssetPostprocessor
     {
-        static readonly uint k_Version = 1;
-        static readonly int k_Order = 4;
+        static readonly uint k_Version = 2;
+        static readonly int k_Order = -960;
         static readonly string k_ShaderPath = "Packages/com.unity.render-pipelines.high-definition/Runtime/Material/PhysicalMaterial3DsMax/PhysicalMaterial3DsMax.shadergraph";
 
         public override uint GetVersion()
@@ -50,8 +50,7 @@ namespace UnityEditor.Rendering.HighDefinition
 
         public void OnPreprocessMaterialDescription(MaterialDescription description, Material material, AnimationClip[] clips)
         {
-            var pipelineAsset = GraphicsSettings.currentRenderPipeline;
-            if (!pipelineAsset || pipelineAsset.GetType() != typeof(HDRenderPipelineAsset))
+            if (HDRenderPipeline.currentAsset == null)
                 return;
 
             if (Is3DsMaxPhysicalMaterial(description))
@@ -183,7 +182,7 @@ namespace UnityEditor.Rendering.HighDefinition
             Vector4 vectorProperty;
             TexturePropertyDescription textureProperty;
 
-           
+
             var shader = AssetDatabase.LoadAssetAtPath<Shader>(k_ShaderPath);
             if (shader == null)
                 return;
@@ -292,7 +291,7 @@ namespace UnityEditor.Rendering.HighDefinition
                 material.SetTexture(outPropName + "_MAP", textureProperty.texture);
                 material.SetColor(outPropName, Color.white);
             }
-            else if(description.TryGetProperty(inPropName, out Vector4 color))
+            else if (description.TryGetProperty(inPropName, out Vector4 color))
             {
                 material.SetColor(outPropName, color);
             }
@@ -306,7 +305,7 @@ namespace UnityEditor.Rendering.HighDefinition
                 material.SetTexture(outPropName + "_MAP", textureProperty.texture);
                 material.SetFloat(outPropName, 1.0f);
             }
-            else if(description.TryGetProperty(inPropName, out float floatProperty))
+            else if (description.TryGetProperty(inPropName, out float floatProperty))
             {
                 material.SetFloat(outPropName, floatProperty);
             }

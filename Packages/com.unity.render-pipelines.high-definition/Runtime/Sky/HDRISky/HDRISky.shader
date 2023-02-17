@@ -8,11 +8,13 @@ Shader "Hidden/HDRP/Sky/HDRISky"
     #pragma target 4.5
     #pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch
 
-    #pragma multi_compile_local _ SKY_MOTION
-    #pragma multi_compile_local _ USE_FLOWMAP
+    #define LIGHTLOOP_DISABLE_TILE_AND_CLUSTER
 
-    #pragma multi_compile _ DEBUG_DISPLAY
-    #pragma multi_compile SHADOW_LOW SHADOW_MEDIUM SHADOW_HIGH
+    #pragma multi_compile_local_fragment _ SKY_MOTION
+    #pragma multi_compile_local_fragment _ USE_FLOWMAP
+
+    #pragma multi_compile_fragment _ DEBUG_DISPLAY
+    #pragma multi_compile_fragment SHADOW_LOW SHADOW_MEDIUM SHADOW_HIGH SHADOW_VERY_HIGH
 
     #pragma multi_compile USE_FPTL_LIGHTLIST USE_CLUSTERED_LIGHTLIST
 
@@ -47,7 +49,7 @@ Shader "Hidden/HDRP/Sky/HDRISky"
 
     TEXTURECUBE(_Cubemap);
     SAMPLER(sampler_Cubemap);
-    
+
     TEXTURE2D(_Flowmap);
     SAMPLER(sampler_Flowmap);
 
@@ -59,7 +61,7 @@ Shader "Hidden/HDRP/Sky/HDRISky"
     uint   _BackplateShadowFilter;
 
     float4 _FlowmapParam; // x upper hemisphere only, y scroll factor, zw scroll direction (cosPhi and sinPhi)
-    
+
     #define _Intensity          _SkyParam.x
     #define _CosPhi             _SkyParam.z
     #define _SinPhi             _SkyParam.w
@@ -196,14 +198,13 @@ Shader "Hidden/HDRP/Sky/HDRISky"
 
             float3 dd = flow.x * tangent + flow.y * bitangent;
 #else
-            float3 windDir = RotationUp(float3(0, 0, 1), _ScrollDirection);
-            windDir.x *= -1.0;
+            float3 windDir = float3(_ScrollDirection.x, 0.0f, _ScrollDirection.y);
             float3 dd = windDir*sin(dir.y*PI*0.5);
 #endif
 
             // Sample twice
-            float3 color1 = SAMPLE_TEXTURECUBE_LOD(_Cubemap, sampler_Cubemap, dir - alpha.x*dd, 0).rgb;
-            float3 color2 = SAMPLE_TEXTURECUBE_LOD(_Cubemap, sampler_Cubemap, dir - alpha.y*dd, 0).rgb;
+            float3 color1 = SAMPLE_TEXTURECUBE_LOD(_Cubemap, sampler_Cubemap, dir + alpha.x*dd, 0).rgb;
+            float3 color2 = SAMPLE_TEXTURECUBE_LOD(_Cubemap, sampler_Cubemap, dir + alpha.y*dd, 0).rgb;
 
             // Blend color samples
             return lerp(color1, color2, abs(2.0 * alpha.x));
@@ -352,6 +353,7 @@ Shader "Hidden/HDRP/Sky/HDRISky"
 
     SubShader
     {
+        Tags{ "RenderPipeline" = "HDRenderPipeline" }
         // Regular HDRI Sky
         // For cubemap
         Pass
