@@ -80,17 +80,23 @@ namespace Simulator.Api.Commands
                     var vehicleData = (VehicleData)null;
                     var simDataList = simService.List();
                     // find locally by searching through simDataList
+                    // prioritize parking lot instance
+                    bool isFinal = false;
                     foreach (var simData in simDataList){
                         if (simData.Vehicles == null){
+                            continue;
+                        }
+                        if (vehicleData != null && !isFinal && simData.Name != "Parking Lot"){
                             continue;
                         }
                         foreach (var veh in simData.Vehicles){
                             if (veh.Id == name || veh.Name == name){
                                 vehicleData = veh;
+                                isFinal = (simData.Name == "Parking Lot");
                                 break;
                             }
                         }
-                        if (vehicleData != null){
+                        if (vehicleData != null && isFinal){
                             break;
                         }
                     }
