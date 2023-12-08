@@ -19,18 +19,6 @@ namespace Simulator.Api.Commands
             var api = ApiManager.Instance;
             var sim = SimulatorManager.Instance;
 
-            var timeScale = args["time_scale"];
-            if (timeScale == null || timeScale.IsNull)
-            {
-                api.TimeScale = 1f;
-            }
-            else
-            {
-                api.TimeScale = timeScale.AsFloat;
-            }
-
-            SimulatorManager.SetTimeScale(api.TimeScale);
-
             var timeLimit = args["time_limit"].AsFloat;
             if (timeLimit != 0)
             {
@@ -40,7 +28,19 @@ namespace Simulator.Api.Commands
             else
             {
                 api.FrameLimit = 0;
+                api.API_Notified = false;
             }
+
+            var timeScale = args["time_scale"];
+            if (timeScale == null || timeScale.IsNull)
+            {
+                api.TimeScale = 1f;
+            }
+            else
+            {
+                api.TimeScale = timeScale.AsFloat;
+            }
+            SimulatorManager.SetTimeScale(api.TimeScale);
 
             sim.AnalysisManager.AnalysisInit();
         }

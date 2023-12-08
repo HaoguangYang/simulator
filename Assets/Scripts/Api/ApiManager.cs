@@ -56,6 +56,9 @@ namespace Simulator.Api
         public int FrameLimit;
 
         [NonSerialized]
+        public bool API_Notified = true;
+
+        [NonSerialized]
         public float TimeScale;
 
         WebSocketServer Server;
@@ -591,11 +594,17 @@ namespace Simulator.Api
             {
                 if (FrameLimit != 0 && CurrentFrame >= FrameLimit)
                 {
+                    // pause and notify API
                     SimulatorManager.SetTimeScale(0.0f);
                     SendResult();
                 }
                 else
                 {
+                    if (FrameLimit == 0 && !API_Notified)
+                    {
+                        SendResult();
+                        API_Notified = true;
+                    }
                     CurrentTime += Time.fixedDeltaTime;
                     CurrentFrame += 1;
 
