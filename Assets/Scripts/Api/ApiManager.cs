@@ -590,30 +590,36 @@ namespace Simulator.Api
                 return;
             }
             
-            if (ApiLock.IsUnlocked && Time.timeScale != 0.0f)
+            if (!ApiLock.IsUnlocked || Time.timeScale == 0.0f)
             {
-                if (FrameLimit != 0 && CurrentFrame >= FrameLimit)
+                return;
+            }
+
+            if (FrameLimit != 0)
+            {
+                if (CurrentFrame >= FrameLimit)
                 {
                     // pause and notify API
                     SimulatorManager.SetTimeScale(0.0f);
                     SendResult();
-                }
-                else
-                {
-                    if (FrameLimit == 0 && !API_Notified)
-                    {
-                        SendResult();
-                        API_Notified = true;
-                    }
-                    CurrentTime += Time.fixedDeltaTime;
-                    CurrentFrame += 1;
-
-                    if (!CurrentSceneId.IsNullOrEmpty())
-                    {
-                        SimulatorManager.Instance.PhysicsUpdate();
-                    }
+                    return;
                 }
             }
+            else if (!API_Notified)
+            {
+                SendResult();
+                API_Notified = true;
+            }
+
+            CurrentTime += Time.fixedDeltaTime;
+            CurrentFrame += 1;
+
+            if (CurrentSceneId.IsNullOrEmpty())
+            {
+                return;
+            }
+
+            SimulatorManager.Instance.PhysicsUpdate();
         }
             
         public void ReceiveMessage(IPeerManager sender, DistributedMessage distributedMessage)
